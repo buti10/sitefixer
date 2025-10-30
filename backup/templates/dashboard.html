@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="de">
+<head>
+    <meta charset="utf-8">
+    <title>Sitefixer SCAN Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Bootstrap 5 & Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+        :root {
+            --accent: #1b8cff;
+            --accent-grad: linear-gradient(90deg, #1b8cff 40%, #72e7f0 100%);
+            --safe: #22c55e;
+            --warn: #f59e42;
+            --danger: #ef4444;
+            --bg-card: #fff;
+            --bg-page: #f6f8fa;
+            --font-main: 'Segoe UI', 'Roboto', Arial, sans-serif;
+        }
+        html, body {
+            font-family: var(--font-main);
+            background: var(--bg-page);
+            color: #222;
+            transition: background .3s, color .3s;
+        }
+        .dashboard-card {
+            border-radius: 22px;
+            background: var(--bg-card);
+            box-shadow: 0 8px 28px rgba(30,34,38,0.08);
+            padding: 2rem 2rem 1rem 2rem;
+            margin-bottom: 2.5rem;
+            animation: fadein 0.5s;
+        }
+        @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+        .dashboard-title {
+            font-weight: 700;
+            font-size: 2.5rem;
+            letter-spacing: -1px;
+        }
+        .brand-logo {
+            font-weight: 800; font-size: 1.35rem;
+            letter-spacing: .02em;
+            color: var(--accent);
+            display: flex; align-items: center;
+        }
+        .brand-logo i { font-size: 1.5rem; margin-right: 0.3em; }
+        .avatar-menu { position: relative; }
+        .avatar-img {
+            width: 40px; height: 40px;
+            border-radius: 50%; object-fit: cover;
+            box-shadow: 0 2px 10px rgba(100,100,100,0.08);
+            border: 2px solid #e6f0fa;
+            background: #fff;
+            cursor: pointer;
+        }
+        .avatar-dropdown {
+            display: none;
+            position: absolute;
+            right: 0; top: 120%;
+            background: #fff;
+            color: #333;
+            min-width: 170px;
+            box-shadow: 0 3px 18px rgba(0,0,0,0.11);
+            border-radius: 12px;
+            z-index: 1000;
+        }
+        .avatar-dropdown.show { display: block; }
+        .avatar-dropdown a {
+            display: block; padding: .7em 1.2em;
+            color: #222; text-decoration: none;
+            font-size: 1rem;
+            border-bottom: 1px solid #eee;
+        }
+        .avatar-dropdown a:last-child { border-bottom: none;}
+        .avatar-dropdown a:hover { background: #f0f5fa; }
+        .toggle-mode-btn {
+            font-size: 1.6rem;
+            border-radius: 12px !important;
+            margin-left: .7em;
+        }
+        /* Info-Boxes */
+        .statbox {
+            border-radius: 16px;
+            background: var(--accent-grad);
+            color: #fff;
+            font-weight: 600;
+            padding: .9em 2.2em;
+            margin-right: 1em;
+            box-shadow: 0 2px 10px rgba(60,72,88,0.06);
+            display: flex; flex-direction: column; align-items: center;
+        }
+        .statbox .stat-icon { font-size: 1.35em; opacity: .86; }
+        .statbox .stat-value { font-size: 1.4em; font-weight: 700; }
+        .statbox.stat-warn {
+            background: linear-gradient(90deg, #f59e42 40%, #ffeb7e 100%);
+            color: #55420b;
+        }
+        .statbox.stat-danger {
+            background: linear-gradient(90deg, #ef4444 30%, #f59e42 100%);
+            color: #fff;
+        }
+        /* Tables & Cards */
+        .table thead th {
+            position: sticky; top: 0; z-index: 2;
+            background: #212529;
+            color: #fff;
+            border-bottom: 2px solid #2c3136;
+            font-size: 1.04rem;
+            letter-spacing: .02em;
+        }
+        .table-scroll { max-height: 370px; overflow-y: auto; }
+        .table tbody tr { animation: fadein .5s;}
+        .table tbody tr:hover { background: #f1f3f8 !important; transition: .16s; }
+        .btn { border-radius: 14px !important; transition: box-shadow .18s, background .16s;}
+        .btn-accent {
+            background: var(--accent-grad);
+            color: #fff !important;
+            border: none;
+            box-shadow: 0 1px 10px rgba(30,140,255,0.08);
+        }
+        .btn-accent:hover, .btn-accent:focus { filter: brightness(1.11); box-shadow: 0 2px 16px rgba(30,140,255,0.16);}
+        .btn-scan { background: var(--safe) !important; color: #fff !important; }
+        .btn-report { background: var(--warn) !important; color: #fff !important;}
+        .btn-details { background: var(--accent) !important; color: #fff !important;}
+        /* Snackbar */
+        #snackbar {
+            visibility: hidden; min-width: 250px;
+            background-color: #23292f; color: #fff;
+            text-align: center; border-radius: 16px; padding: 16px;
+            position: fixed; z-index: 9999; left: 50%; bottom: 38px;
+            font-size: 1.1em; transform: translateX(-50%);
+            box-shadow: 0 4px 18px rgba(30,34,38,0.20);
+            opacity: 0; transition: opacity .5s, bottom .5s;
+        }
+        #snackbar.show {
+            visibility: visible; opacity: 1; bottom: 70px;
+        }
+        /* Timeline / Ampel */
+        .timeline-daily   { background: #c7f8cf !important; color: #1c6a1e !important;}
+        .timeline-weekly  { background: #f7ecd2 !important; color: #a36909 !important;}
+        .timeline-monthly { background: #f9d6d5 !important; color: #b60a16 !important;}
+        .ampel-low    { background: #c7f8cf !important; color: #1c6a1e !important;}
+        .ampel-medium { background: #fff2cc !important; color: #a07805 !important;}
+        .ampel-high   { background: #f9d6d5 !important; color: #b60a16 !important;}
+        /* Darkmode Overrides */
+        .dark-mode { background: #1a1d21 !important; color: #e7eaf3 !important; }
+        .dark-mode .dashboard-card, .dark-mode .avatar-dropdown { background: #23272b !important; color: #e7eaf3 !important;}
+        .dark-mode .table { background: #202328 !important; color: #e7eaf3 !important;}
+        .dark-mode .table-dark { background: #191c20 !important; color: #e7eaf3 !important;}
+        .dark-mode .btn { filter: brightness(0.98);}
+        .dark-mode .statbox { box-shadow: 0 2px 10px rgba(30,50,90,0.10);}
+        .dark-mode .statbox.stat-warn { color: #d8bb68; }
+        .dark-mode .statbox.stat-danger { color: #fff; }
+        .dark-mode #snackbar { background: #242a2f; color: #fff;}
+        .dark-mode .avatar-dropdown a { color: #f3f4fa;}
+        /* Responsive */
+        @media (max-width: 900px) {
+            .dashboard-card { padding: 1.3rem .5rem 1rem .5rem; }
+            .statbox { margin-bottom: .7em;}
+        }
+        @media (max-width: 650px) {
+            .dashboard-title { font-size: 1.35rem;}
+            .dashboard-card { padding: .6rem .2rem .7rem .2rem; }
+            .statbox { font-size: 14px; padding: .7em 1em;}
+            .table-scroll { font-size: 13px;}
+            .brand-logo { font-size: 1rem;}
+        }
+        /* Mobile: Tabelle zu Cards */
+        @media (max-width: 500px) {
+            .table-scroll, .table-responsive { overflow-x: auto; }
+            .table, .table thead, .table tbody, .table th, .table td, .table tr {
+                display: block !important; width: 100% !important;
+            }
+            .table thead { display: none !important; }
+            .table tr { margin-bottom: 1.2em; box-shadow: 0 1px 8px #eaeaea;}
+            .table td { border: none; position: relative; padding-left: 46%; min-height: 38px;}
+            .table td:before {
+                position: absolute; top: 8px; left: 12px; width: 40%; white-space: nowrap;
+                color: #888; font-weight: 600; font-size: .97em; content: attr(data-label) ": ";
+            }
+        }
+        .stats-row {
+    display: flex;
+    gap: 1.2rem;
+    margin-bottom: 2.2rem;
+}
+.stats-card {
+    flex: 1;
+    min-width: 170px;
+    min-height: 100px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    border-radius: 18px;
+    box-shadow: 0 3px 12px rgba(44, 62, 80,0.11);
+    font-weight: bold;
+    font-size: 1.1rem;
+    transition: background 0.22s, color 0.22s;
+}
+.stats-card.blue {
+    background: linear-gradient(100deg, #1670ff 0%, #38a8ff 100%);
+    color: #fff;
+}
+.stats-card.orange {
+    background: linear-gradient(100deg, #ffe259 0%, #ffa751 100%);
+    color: #30313a;
+}
+.stats-card.red {
+    background: linear-gradient(100deg, #ff5858 0%, #ffc371 100%);
+    color: #fff;
+}
+.dark-mode .stats-card.blue,
+.dark-mode .stats-card.red {
+    color: #fff !important;
+}
+.dark-mode .stats-card.orange {
+    color: #222 !important;
+}
+.stats-card .stats-icon {
+    font-size: 2.2rem;
+    margin-bottom: 2px;
+    opacity: 0.95;
+}
+.stats-card .stats-label {
+    font-size: 1.08rem;
+    font-weight: 400;
+    opacity: 0.96;
+}
+.stats-card .stats-value {
+    font-size: 1.7rem;
+    font-weight: bold;
+    margin-bottom: 1px;
+    margin-top: 3px;
+}
+@media (max-width: 800px) {
+    .stats-row { flex-direction: column; gap: 0.8rem; }
+    .stats-card { min-width: 120px; min-height: 68px; }
+}
+    </style>
+</head>
+<body id="mainBody">
+    {% include 'navbar.html' %}
+<div class="container py-4">
+    <!-- Header: Logo + Darkmode + Avatar -->
+  <!---  <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="brand-logo">
+            <i class="bi bi-shield-lock"></i> Sitefixer <span style="font-weight:300;margin:0 .2em 0 .3em;">•</span> SCAN
+        </div>
+        <div class="d-flex align-items-center gap-3">
+            <button class="btn btn-light border toggle-mode-btn" id="toggleMode" title="Dark/Light-Mode">
+                <i class="bi bi-moon-fill" id="modeIcon"></i>
+            </button>
+            <div class="avatar-menu ms-2">
+                <img src="https://ui-avatars.com/api/?name=KD&background=1b8cff&color=fff&size=128" class="avatar-img" id="avatarImg" alt="Benutzer">
+                <div class="avatar-dropdown" id="avatarDropdown">
+                    <a href="#"><i class="bi bi-person-badge"></i> Mein Profil</a>
+                    <a href="#"><i class="bi bi-gear"></i> Einstellungen</a>
+                    <a href="#"><i class="bi bi-box-arrow-right"></i> Logout</a>
+                </div>
+            </div>
+        </div>-->
+    </div>
+    <!-- Info-Boxes -->
+    <div class="d-flex flex-wrap mb-3">
+        <div class="stats-row">
+            <div class="stats-card blue">
+                <div class="stats-icon"><i class="bi bi-people-fill"></i></div>
+                <div class="stats-value">{{ kunden|length }}</div>
+                <div class="stats-label">Kunden</div>
+            </div>
+            <div class="stats-card orange">
+                <div class="stats-icon"><i class="bi bi-clock-history"></i></div>
+                <div class="stats-value">{{ letzte_scans|length }}</div>
+                <div class="stats-label">Letzte Scans</div>
+            </div>
+            <div class="stats-card red">
+                <div class="stats-icon"><i class="bi bi-bug-fill"></i></div>
+                <div class="stats-value">{{ kritische_scans }}</div>
+                <div class="stats-label">Kritische Funde</div>
+            </div>
+        </div>
+    </div>
+    <!-- Sticky Suchfeld -->
+    <div class="dashboard-card" style="margin-top:.7em;margin-bottom:2.1em;">
+        <form>
+            <input type="text" id="searchInput" class="form-control mb-3" placeholder="Kunden, Domains, E-Mail suchen...">
+        </form>
+        <!-- Kunden-Tabelle -->
+        <div class="table-responsive table-scroll mb-2">
+            <table class="table table-striped table-hover align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Ticket ID</th>
+                        <th><i class="bi bi-person-fill" title="Name"></i> Name</th>
+                        <th><i class="bi bi-envelope" title="E-Mail"></i> E-Mail</th>
+                        <th><i class="bi bi-globe" title="Domain"></i> Domain</th>
+                        <th><i class="bi bi-shield-check" title="Scan-Art"></i> Scan</th>
+                        <th><i class="bi bi-calendar-week" title="Zeitplan"></i> Timeline</th>
+                        <th><i class="bi bi-calendar-event" title="Nächster Scan"></i> Nächster Scan</th>
+                        <th>Aktionen</th>
+                    </tr>
+                </thead>
+                <tbody id="kundenTable">
+                    {% for k in kunden[:10] %}
+                    <tr>
+                        <td data-label="Ticket ID">{{ k.ticket_id }}</td>
+                        <td data-label="Name">{{ k.name }}</td>
+                        <td data-label="E-Mail">{{ k.email }}</td>
+                        <td data-label="Domain">{{ k.domain }}</td>
+                        <td data-label="Scan">
+                            {% if k.scan_type %}
+                                <span class="badge bg-info">{{ k.scan_type }}</span>
+                            {% else %}
+                                <span class="badge bg-secondary">-</span>
+                            {% endif %}
+                        </td>
+                        <td data-label="Timeline">
+                            {% if k.timeline == 'täglich' %}
+                                <span class="badge timeline-daily"><i class="bi bi-calendar-day"></i> Täglich</span>
+                            {% elif k.timeline == 'wöchentlich' %}
+                                <span class="badge timeline-weekly"><i class="bi bi-calendar-week"></i> Wöchentlich</span>
+                            {% elif k.timeline == 'monatlich' %}
+                                <span class="badge timeline-monthly"><i class="bi bi-calendar"></i> Monatlich</span>
+                            {% else %}
+                                <span class="badge bg-secondary">-</span>
+                            {% endif %}
+                        </td>
+                        <td data-label="Nächster Scan">
+                            {% if k.next_scan %}
+                                <span>{{ k.next_scan }}</span>
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td data-label="Aktionen">
+                            <a href="{{ url_for('kunde_details', ticket_id=k.ticket_id) }}"
+                               class="btn btn-details btn-sm me-1 mb-1" title="Kundendetails ansehen">
+                                <i class="bi bi-search"></i>
+                            </a>
+                            <button type="button" class="btn btn-scan btn-sm me-1 mb-1 btn-startscan"
+                                    data-ticket="{{ k.ticket_id }}" title="Scan starten">
+                                <i class="bi bi-lightning-charge"></i>
+                            </button>
+                            <button type="button" class="btn btn-report btn-sm mb-1" title="Report anzeigen">
+                                <i class="bi bi-file-earmark-text"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <!-- Letzte Scans Tabelle -->
+    <div class="dashboard-card">
+        <h2>Letzte Scans</h2>
+        <div class="table-responsive table-scroll">
+            <table class="table table-striped table-hover align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Datum</th>
+                        <th>Ticket ID</th>
+                        <th>Domain</th>
+                        <th>Scan-Art</th>
+                        <th>Dateien gescannt</th>
+                        <th>Malware gefunden</th>
+                        <th>Sicherheitsgrad</th>
+                        <th>Aktion</th>
+                    </tr>
+                </thead>
+                <tbody id="scansTable">
+                    {% for s in letzte_scans %}
+                    <tr>
+                        <td data-label="Datum">{{ s.date }}</td>
+                        <td data-label="Ticket ID">{{ s.ticket_id }}</td>
+                        <td data-label="Domain">{{ s.domain }}</td>
+                        <td data-label="Scan-Art"><span class="badge bg-info"><i class="bi bi-shield-check"></i> {{ s.scan_type }}</span></td>
+                        <td data-label="Dateien gescannt"><i class="bi bi-files"></i> {{ s.files_scanned }}</td>
+                        <td data-label="Malware gefunden">
+                            {% if s.malware_found > 0 %}
+                                <span class="badge bg-danger"><i class="bi bi-exclamation-diamond"></i> {{ s.malware_found }}</span>
+                            {% else %}
+                                <span class="badge bg-success"><i class="bi bi-check-circle"></i> 0</span>
+                            {% endif %}
+                        </td>
+                        <td data-label="Sicherheitsgrad">
+                            {% if s.security_level == 'hoch' %}
+                                <span class="badge ampel-high"><i class="bi bi-exclamation-triangle"></i> Hoch</span>
+                            {% elif s.security_level == 'mittel' %}
+                                <span class="badge ampel-medium"><i class="bi bi-arrow-up-circle"></i> Mittel</span>
+                            {% else %}
+                                <span class="badge ampel-low"><i class="bi bi-check-circle"></i> Niedrig</span>
+                            {% endif %}
+                        </td>
+                        <td data-label="Aktion">
+                            <a href="#" class="btn btn-secondary btn-sm" title="Scan-Report ansehen"><i class="bi bi-file-earmark-text"></i></a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+<!-- Snackbar für Feedback -->
+<div id="snackbar"></div>
+<!-- Dynamic search, Dark/Light Mode, Avatar menu, Snackbar -->
+<script>
+document.getElementById('searchInput').addEventListener('keyup', function() {
+    let filter = this.value.toLowerCase();
+    let rows = document.querySelectorAll('#kundenTable tr');
+    rows.forEach(function(row) {
+        let text = row.textContent.toLowerCase();
+        row.style.display = text.indexOf(filter) > -1 ? '' : 'none';
+    });
+});
+// Dark/Light mode toggle
+const body = document.getElementById('mainBody');
+const modeBtn = document.getElementById('toggleMode');
+const modeIcon = document.getElementById('modeIcon');
+let darkMode = localStorage.getItem('darkMode') === 'true';
+function setMode(dark) {
+    if (dark) {
+        body.classList.add('dark-mode');
+        modeIcon.classList.remove('bi-moon-fill');
+        modeIcon.classList.add('bi-sun-fill');
+    } else {
+        body.classList.remove('dark-mode');
+        modeIcon.classList.remove('bi-sun-fill');
+        modeIcon.classList.add('bi-moon-fill');
+    }
+    localStorage.setItem('darkMode', dark);
+}
+setMode(darkMode);
+modeBtn.onclick = () => { darkMode = !darkMode; setMode(darkMode); }
+
+// Avatar Menü
+const avatarImg = document.getElementById('avatarImg');
+const avatarDropdown = document.getElementById('avatarDropdown');
+avatarImg.onclick = () => { avatarDropdown.classList.toggle('show'); };
+window.onclick = e => {
+    if (!avatarImg.contains(e.target) && !avatarDropdown.contains(e.target)) {
+        avatarDropdown.classList.remove('show');
+    }
+};
+
+// Snackbar für Aktionen
+function showSnackbar(text, type='success') {
+    let bar = document.getElementById('snackbar');
+    bar.innerText = text;
+    bar.style.backgroundColor = type==='error' ? '#e94a4a' : (type==='warn' ? '#fbbf24' : '#23292f');
+    bar.className = "show";
+    setTimeout(() => { bar.className = bar.className.replace("show", ""); }, 2300);
+}
+// Beispiel: Button „Scan starten“ löst Snackbar aus
+document.querySelectorAll('.btn-startscan').forEach(btn => {
+    btn.onclick = function() {
+        showSnackbar("Scan wird gestartet für Ticket #" + this.dataset.ticket);
+        // Hier kannst du ggf. deinen AJAX-Scan starten
+    };
+});
+</script>
+</body>
+</html>

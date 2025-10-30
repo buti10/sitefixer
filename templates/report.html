@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <title>{{ ticket.domain }} – Malware-Report</title>
+  <style>
+    @page { size: A4 landscape; margin: 14mm; }         /* Querformat PDF */
+    :root{
+      --fg:#111; --muted:#6b7280; --line:#e5e7eb;
+      --ok:#16a34a; --warn:#f59e0b; --bad:#ef4444; --chip:#f3f4f6;
+      --chipfg:#111; --bgcode:#0b1220; --fgcode:#e5e7eb; --hl:#fde68a;
+      --badge:#eef2ff; --badgefg:#3730a3;
+    }
+    *{ box-sizing:border-box }
+    body{ font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial; color:var(--fg); }
+    h1{ font-size:24px; margin:0 0 6px; }
+    h2{ font-size:18px; margin:18px 0 10px; }
+    small, .muted{ color:var(--muted); }
+    .row{ display:flex; gap:20px; align-items:center; }
+    .logo{ height:28px }
+    .kvs{ margin-top:4px }
+    .kvs span{ margin-right:12px }
+    .chip{ display:inline-block; background:var(--chip); color:var(--chipfg);
+           padding:6px 10px; border-radius:10px; font-weight:600; }
+    .b{ font-weight:700 }
+    .badge{ display:inline-block; padding:4px 8px; border-radius:8px;
+            background:var(--badge); color:var(--badgefg); font-weight:600 }
+    .bad   { background:#fee2e2; color:#991b1b }
+    .ok    { background:#dcfce7; color:#14532d }
+    .warn  { background:#fef3c7; color:#92400e }
+
+    .box{ border:1px solid var(--line); border-radius:14px; padding:14px; margin:12px 0 }
+    table{ width:100%; border-collapse:collapse }
+    th,td{ border-top:1px solid var(--line); padding:10px 10px; text-align:left; vertical-align:top }
+    th{ background:#fafafa; font-size:13px }
+    td.path{ width:40%; word-break:break-all }
+    td.line{ width:60px; text-align:center; color:var(--muted) }
+    td.sev  { width:120px }
+    td.kind { width:180px }
+    pre.snip{
+      background:var(--bgcode); color:var(--fgcode);
+      border-radius:10px; padding:10px 12px; margin:8px 0 0;
+      font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+      white-space:pre-wrap; word-break:break-word; max-height:140px; overflow:auto;
+    }
+    mark{ background:var(--hl); padding:0 2px }
+  </style>
+</head>
+<body>
+
+  <div class="row">
+    {% if logo %}<img class="logo" src="{{ logo }}" alt="Logo">{% endif %}
+    <h1>Malware-Report</h1>
+  </div>
+
+  <div class="kvs muted">
+    <span><span class="b">Ticket</span> #{{ ticket.id }} – {{ ticket.domain or 'ohne Domain' }}</span>
+    <span>•</span>
+    <span>Scan <code>{{ (scan.id or '')[:8] }}</code></span>
+  </div>
+  <div class="kvs muted">
+    <span>Kunde: {{ ticket.name or '—' }}{% if ticket.email %} &lt;{{ ticket.email }}&gt;{% else %}{% endif %}</span>
+    <span>•</span>
+    <span>CMS: {{ ticket.cms or '—' }}</span>
+    <span>•</span>
+    <span>Hoster: {{ ticket.hoster or '—' }}</span>
+    <span>•</span>
+    <span>Erzeugt: {{ generated_at.strftime('%Y-%m-%d %H:%M:%S') }}</span>
+  </div>
+
+  <h2>Zusammenfassung</h2>
+  <div class="box">
+    <span class="chip">Total: <span class="b">{{ counts.total or 0 }}</span></span>
+    <span class="chip ok">Clean: <span class="b">{{ counts.clean or 0 }}</span></span>
+    <span class="chip warn">Suspicious: <span class="b">{{ counts.suspicious or 0 }}</span></span>
+    <span class="chip bad">Malicious: <span class="b">{{ counts.malicious or 0 }}</span></span>
+  </div>
+
+  <h2>Findings</h2>
+  <div class="box">
+    <table>
+      <thead>
+        <tr>
+          <th>Datei</th>
+          <th>Art</th>
+          <th>Schwere</th>
+          <th>Zeile</th>
+          {% if include_snippets %}<th style="width:40%">Ausschnitt</th>{% endif %}
+        </tr>
+      </thead>
+      <tbody>
+      {% for f in findings %}
+        {# detail.line / detail.snippet werden vom Worker gefüllt; fehlen bei Entropie/YARA #}
+        {% set d = (f.detail or {}) %}
+        {% set sev = (f.severity or '').lower() %}
+        <tr>
+          <td class="path">
+            {{ f.path }}
+            {% if d.sha256 %}<div class="muted" style="font-size:12px">sha256: {{ d.sha256 }}</div>{% endif %}
+          </td>
+          <td class="kind">{{ f.kind or f.rule or f.type or '—' }}</td>
+          <td class="sev">
+            <span class="badge {% if sev=='high' %}bad{% elif sev=='medium' %}warn{% else %}ok{% endif %}">
+              {{ f.severity or '—' }}
+            </span>
+          </td>
+          <td class="line">{{ d.line or '—' }}</td>
+          {% if include_snippets %}
+            <td>
+              {% if d.snippet %}
+                <pre class="snip">{{ d.snippet }}</pre>
+                {% if f.detail.info %}<div class="muted" style="font-size:12px; margin-top:6px">Hinweis: {{ f.detail.info }}</div>{% endif %}
+              {% else %}
+                <span class="muted">kein Ausschnitt verfügbar</span>
+              {% endif %}
+            </td>
+          {% endif %}
+        </tr>
+      {% endfor %}
+      {% if not findings or findings|length == 0 %}
+        <tr><td colspan="{{ 5 if include_snippets else 4 }}" class="muted">Keine Findings.</td></tr>
+      {% endif %}
+      </tbody>
+    </table>
+  </div>
+
+</body>
+</html>

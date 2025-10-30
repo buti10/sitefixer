@@ -1,0 +1,6 @@
+:root { color-scheme: light dark; }
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.sf-nooverlay { pointer-events: none !important; }

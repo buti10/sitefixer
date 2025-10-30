@@ -1,0 +1,24 @@
+import { defineStore } from 'pinia'
+
+export type ChatMsg = { id:number; me?:boolean; ts:string; text:string }
+export type ChatTab = { id:number; title:string; unread:number; open:boolean; msgs:ChatMsg[] }
+
+export const useChatDock = defineStore('chatDock', {
+  state: () => ({ tabs: [] as ChatTab[], dockOpen: false }),
+  getters: {
+    totalUnread: s => s.tabs.reduce((n,t)=>n+t.unread,0),
+  },
+  actions: {
+    ensure(id:number, title:string){ 
+      let t = this.tabs.find(x=>x.id===id)
+      if(!t){ t = { id, title, unread:0, open:false, msgs:[] }; this.tabs.push(t) }
+      return t
+    },
+    open(id:number){ const t=this.tabs.find(x=>x.id===id); if(t){ t.open=true; this.dockOpen=true; t.unread=0 } },
+    close(id:number){ const t=this.tabs.find(x=>x.id===id); if(t) t.open=false },
+    pushMsg(id:number, msg:ChatMsg, title?:string){
+      const t = this.ensure(id, title || `Chat #${id}`); t.msgs.push(msg)
+      if(!t.open) t.unread++
+    }
+  }
+})

@@ -1,0 +1,30 @@
+{
+  "entry": [
+    "src/main.ts",
+    "src/router.js",
+    "src/router.ts"
+  ],
+  "ignorePatterns": [
+    "dist/**",
+    "node_modules/**"
+  ],
+  "typescript": true,
+  "ignoreUnresolved": [],
+  "ignoreUnused": [
+    "vue"
+  ],
+  "ignoreUnimported": [
+    "src/components/CredentialField.vue",
+    "src/components/FindingsList.vue",
+    "src/components/KeyValue.vue",
+    "src/components/ScanProgress.vue",
+    "src/components/StatusBadge.vue",
+    "src/components/ThemeToggle.vue",
+    "src/components/scan/ScanHeader.vue",
+    "src/components/scan/ScanStart.vue",
+    "src/components/scan/ScanStartForm.vue",
+    "src/composables/useScans.ts",
+    "src/layouts/AppShell.vue",
+    "src/pages/MalwareScan.vue"
+  ]
+}

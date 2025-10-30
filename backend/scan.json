@@ -1,0 +1,14 @@
+{
+  "ticket_id": 1,
+  "kind": "deep",
+  "config": {
+    "root_path": "/clickandbuilds/FixSite/wp-content",
+    "sftp": {
+      "host": "access988363139.webspace-data.io",
+      "port": 22,
+      "user": "u114293392",
+      "auth": "password",
+      "password": "Ionos2025/" 
+    }
+  }
+}

@@ -1,0 +1,35 @@
+[
+  {
+    "id": 201,
+    "type": "chat",
+    "visitor": "Unbekannt (Chrome)",
+    "domain": "kundenseite.de",
+    "page": "/kontakt",
+    "waiting_since": "2025-10-27T10:12:00",
+    "status": "waiting",
+    "agent": null,
+    "message_preview": "Hallo, ich brauche Hilfe wegen Malware..."
+  },
+  {
+    "id": 202,
+    "type": "chat",
+    "visitor": "kunde@ex.de",
+    "domain": "kundenseite.de",
+    "page": "/produkt",
+    "waiting_since": "2025-10-27T10:05:00",
+    "status": "active",
+    "agent": "Admin",
+    "message_preview": "Ich bin im Chat, danke für die schnelle Antwort."
+  },
+  {
+    "id": 203,
+    "type": "chat",
+    "visitor": "support@kunde24.de",
+    "domain": "supportseite.de",
+    "page": "/hilfe",
+    "waiting_since": "2025-10-27T09:45:00",
+    "status": "closed",
+    "agent": "Lara",
+    "message_preview": "Problem gelöst, danke!"
+  }
+]

@@ -1,0 +1,16 @@
+[Unit]
+Description=Sitefixer Backend (Flask via Gunicorn)
+After=network.target mariadb.service
+
+
+[Service]
+User=www-data
+Group=www-data
+WorkingDirectory=/var/www/sitefixer/backend
+Environment="PYTHONUNBUFFERED=1"
+ExecStart=/var/www/sitefixer/backend/venv/bin/gunicorn -w 2 -b 127.0.0.1:8000 wsgi:app
+Restart=always
+
+
+[Install]
+WantedBy=multi-user.target

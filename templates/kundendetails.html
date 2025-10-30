@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="de">
+<head>
+    <meta charset="utf-8">
+    <title>Kundendetails • {{ kunde.name }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <style>
+body, html { font-family: 'Segoe UI', 'Roboto', Arial, sans-serif; background: #f6f8fa; transition: background 0.3s, color 0.3s; }
+.dark-mode { background: #16191d !important; color: #e7eaf3 !important; }
+.sticky-top { position: sticky; top: 0; z-index: 1200; }
+.dashboard-card { border-radius: 22px; background: #fff; box-shadow: 0 6px 24px rgba(60,72,88,0.12); padding: 2rem 2rem 1.1rem 2rem; margin-bottom: 2.5rem; }
+.dark-mode .dashboard-card { background: #23262d; color: #e7eaf3; }
+.section-title { font-weight: bold; font-size: 1.35rem; margin-bottom: 1rem; }
+.label { color: #555; font-size: 0.98rem; }
+.credential-box { background: #f4f7fa; border-radius: 14px; padding: 1.1rem 1.3rem; margin-bottom: 1rem; }
+.dark-mode .credential-box { background: #24292f; }
+.scan-cards { display: flex; gap: 1.1rem; flex-wrap: wrap; }
+.scan-card {
+    flex: 1 1 210px; background: #f8fafb; border-radius: 16px;
+    box-shadow: 0 1px 10px rgba(40,60,120,0.10);
+    display: flex; flex-direction: column; align-items: flex-start;
+    padding: 1.2rem 1rem 1.1rem 1.2rem; margin-bottom: .7rem; min-width: 190px; min-height: 130px;
+    transition: transform 0.12s, box-shadow .18s;
+    position: relative;
+}
+.scan-card .bi { font-size: 1.6rem; opacity: .76; margin-right: .6rem;}
+.scan-card .scan-title { font-size: 1.04rem; font-weight: 600; margin-bottom: .6rem; display: flex; align-items: center;}
+.scan-card .plan-btn { position: absolute; top: 1.2rem; right: 1.2rem; }
+.scan-card .plan-badge { margin-top: 0.7rem; }
+.scan-card:hover { transform: translateY(-4px) scale(1.025); box-shadow: 0 5px 24px rgba(50,70,180,0.11);}
+.scan-card.malware { border-left: 5px solid #DC3545; }
+.scan-card.seo { border-left: 5px solid #00baf2; }
+.scan-card.speed { border-left: 5px solid #5e60ce; }
+.scan-card.ssl { border-left: 5px solid #198754; }
+.dark-mode .scan-card { background: #1f2328; }
+.table-scroll { max-height: 320px; overflow-y: auto; }
+::-webkit-scrollbar { width: 9px; background: #eee;}
+::-webkit-scrollbar-thumb { background: #d2d5db; border-radius: 6px;}
+.dark-mode ::-webkit-scrollbar-thumb { background: #33363b;}
+/* Sticky Navbar */
+#navbarMain.sticky-top { box-shadow: 0 2px 10px rgba(40,50,120,0.08); }
+/* Responsiv */
+@media (max-width: 900px) {
+    .dashboard-card { padding: 1.1rem .5rem 1rem .5rem; }
+    .scan-cards { gap: .4rem;}
+    .scan-card { min-width: 170px;}
+}
+@media (max-width: 600px) {
+    .dashboard-card { padding: .7rem .12rem .4rem .12rem; }
+    .scan-cards { flex-direction: column; }
+    .scan-card { min-width: unset; width: 100%; }
+}
+    </style>
+</head>
+<body id="mainBody">
+    {% include 'navbar.html' %}
+<div class="container py-4">
+    <!-- Zurück-Link -->
+    <div class="mb-3">
+        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-warning"><i class="bi bi-arrow-left"></i> Zurück zum Dashboard</a>
+    </div>
+
+    <!-- Kundendetails -->
+    <div class="dashboard-card mb-4">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <h2 class="section-title"><i class="bi bi-person-fill"></i> Kundendaten</h2>
+                <div><span class="label">Name:</span> {{ kunde.name }}</div>
+                <div><span class="label">E-Mail:</span> {{ kunde.email }}</div>
+                <div><span class="label">Domain:</span> {{ kunde.domain }}</div>
+                <div><span class="label">Ticket ID:</span> {{ kunde.ticket_id }}</div>
+            </div>
+            <div class="col-md-6">
+                <h2 class="section-title"><i class="bi bi-key-fill"></i> Zugänge</h2>
+                <div class="credential-box">
+                    <div class="mb-1"><i class="bi bi-server"></i> <span class="label">FTP Host:</span> <span class="fw-bold">{{ zugang.ftp_host }}</span></div>
+                    <div class="mb-1"><i class="bi bi-person"></i> <span class="label">FTP User:</span> <span class="fw-bold">{{ zugang.ftp_user }}</span></div>
+                    <div class="mb-1"><i class="bi bi-lock"></i> <span class="label">FTP Passwort:</span> <span class="fw-bold">{{ zugang.ftp_pass }}</span></div>
+                    <hr>
+                    <div class="mb-1"><i class="bi bi-person-circle"></i> <span class="label">Web-Login:</span> <span class="fw-bold">{{ zugang.website_user }}</span></div>
+                    <div class="mb-1"><i class="bi bi-shield-lock"></i> <span class="label">Web-Passwort:</span> <span class="fw-bold">{{ zugang.website_pass }}</span></div>
+                </div>
+            </div>
+        </div>
+                                   <!-- Nach der credential-box oder im Bereich der Kundendaten -->
+             <div class="text-end mt-2">
+                 <a href="{{ url_for('sftp_explorer', ticket_id=kunde.ticket_id) }}" class="btn btn-primary">
+                 <i class="bi bi-hdd-network"></i> SFTP-Explorer öffnen
+                 </a>
+     </div>
+</div>
+
+        </div>
+    </div>
+
+    <!-- Scans und Planer -->
+    <div class="dashboard-card mb-4">
+        <h2 class="section-title"><i class="bi bi-shield-check"></i> Sofort-Scans & Scan-Planung</h2>
+        <div class="scan-cards">
+            <div class="scan-card malware">
+                <div class="scan-title text-danger"><i class="bi bi-bug"></i> Malware-Scan</div>
+                <form action="{{ url_for('scan_start', kunden_id=kunde.ticket_id) }}" method="post" style="display:inline;">
+                    <button type="submit" class="btn btn-danger btn-sm">
+                        <i class="bi bi-lightning-charge"></i> Scan starten
+                    </button>
+                </form>
+                <button class="btn btn-outline-danger btn-sm plan-btn" data-bs-toggle="tooltip" title="Scan planen"><i class="bi bi-calendar-event"></i></button>
+                {% if geplante_scans.malware %}
+                    <span class="badge bg-warning plan-badge">Geplant: {{ geplante_scans.malware }}</span>
+                {% endif %}
+            </div>
+            
+            <div class="scan-card seo">
+                <div class="scan-title text-info"><i class="bi bi-graph-up-arrow"></i> SEO-Scan</div>
+                <button class="btn btn-info btn-sm"><i class="bi bi-lightning-charge"></i> Scan starten</button>
+                <button class="btn btn-outline-info btn-sm plan-btn" data-bs-toggle="tooltip" title="Scan planen"><i class="bi bi-calendar-event"></i></button>
+                {% if geplante_scans.seo %}
+                    <span class="badge bg-warning plan-badge">Geplant: {{ geplante_scans.seo }}</span>
+                {% endif %}
+            </div>
+            <div class="scan-card speed">
+                <div class="scan-title text-primary"><i class="bi bi-speedometer2"></i> Speed-Scan</div>
+                <button class="btn btn-primary btn-sm"><i class="bi bi-lightning-charge"></i> Scan starten</button>
+                <button class="btn btn-outline-primary btn-sm plan-btn" data-bs-toggle="tooltip" title="Scan planen"><i class="bi bi-calendar-event"></i></button>
+                {% if geplante_scans.speed %}
+                    <span class="badge bg-warning plan-badge">Geplant: {{ geplante_scans.speed }}</span>
+                {% endif %}
+            </div>
+            <div class="scan-card ssl">
+                <div class="scan-title text-success"><i class="bi bi-lock"></i> SSL-Check</div>
+                <button class="btn btn-success btn-sm"><i class="bi bi-lightning-charge"></i> Scan starten</button>
+                <button class="btn btn-outline-success btn-sm plan-btn" data-bs-toggle="tooltip" title="Scan planen"><i class="bi bi-calendar-event"></i></button>
+                {% if geplante_scans.ssl %}
+                    <span class="badge bg-warning plan-badge">Geplant: {{ geplante_scans.ssl }}</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="mt-2 small text-muted">Geplante Scans werden automatisch ausgeführt und erscheinen in der Scanhistorie.</div>
+    </div> 
+    <hr class="mb-4 mt-0" style="opacity:.14;">
+    <!-- Scan-History für diesen Kunden -->
+    <div class="dashboard-card">
+        <h2 class="section-title"><i class="bi bi-clock-history"></i> Scanhistorie</h2>
+        <div class="table-responsive table-scroll">
+            <table class="table table-striped table-hover align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Datum</th>
+                        <th>Scan-Art</th>
+                        <th>Dateien</th>
+                        <th>Malware</th>
+                        <th>Sicherheitsgrad</th>
+                        <th>Aktion</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for s in scanhistory %}
+                    <tr>
+                        <td>{{ s.date }}</td>
+                        <td><span class="badge bg-info">{{ s.scan_type }}</span></td>
+                        <td>{{ s.files_scanned }}</td>
+                        <td>
+                            {% if s.malware_found > 0 %}
+                                <span class="badge bg-danger">{{ s.malware_found }}</span>
+                            {% else %}
+                                <span class="badge bg-success">0</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if s.security_level == 'hoch' %}
+                                <span class="badge bg-danger">Hoch</span>
+                            {% elif s.security_level == 'mittel' %}
+                                <span class="badge bg-warning text-dark">Mittel</span>
+                            {% else %}
+                                <span class="badge bg-success">Niedrig</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="#" class="btn btn-secondary btn-sm" title="Scan-Report ansehen"><i class="bi bi-file-earmark-text"></i></a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted">Noch keine Scans vorhanden.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+    const body = document.getElementById('mainBody') || document.body;
+    const modeBtn = document.getElementById('toggleMode');
+    const modeIcon = document.getElementById('modeIcon');
+    let darkMode = localStorage.getItem('darkMode') === 'true';
+    
+    function setMode(dark) {
+        if (dark) {
+            body.classList.add('dark-mode');
+            document.getElementById('navbarMain')?.classList.add('bg-dark', 'navbar-dark');
+            modeIcon.classList.remove('bi-moon-fill');
+            modeIcon.classList.add('bi-sun-fill');
+        } else {
+            body.classList.remove('dark-mode');
+            document.getElementById('navbarMain')?.classList.remove('bg-dark', 'navbar-dark');
+            modeIcon.classList.remove('bi-sun-fill');
+            modeIcon.classList.add('bi-moon-fill');
+        }
+        localStorage.setItem('darkMode', dark);
+    }
+    setMode(darkMode);
+    modeBtn.onclick = () => { darkMode = !darkMode; setMode(darkMode); }
+    
+document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(el => {
+    new bootstrap.Tooltip(el);
+});
+   </script>
+    </body>
+</html>

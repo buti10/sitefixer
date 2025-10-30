@@ -1,0 +1,16 @@
+/venv/
+/node_modules/
+/dist/
+/.vite/
+/__pycache__/
+/*.pyc
+.env
+.DS_Store
+/reports/
+
+# große Artefakte
+backend-backup-*.tgz
+*.zip
+*.tar
+*.tgz
+reports/

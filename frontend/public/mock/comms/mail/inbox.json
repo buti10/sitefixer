@@ -1,0 +1,5 @@
+[
+  {"id":101,"subject":"Fehler 500","from":"kunde@ex.de","status":"open","ts":"2025-10-27T10:10:00Z"},
+  {"id":102,"subject":"SEO Angebot","from":"kontakt@agentur.de","status":"closed","ts":"2025-10-26T08:32:00Z"},
+  {"id":103,"subject":"Rechnung fehlt","from":"support@kunde24.de","status":"waiting","ts":"2025-10-27T09:41:00Z"}
+]

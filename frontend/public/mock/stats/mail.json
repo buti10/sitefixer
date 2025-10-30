@@ -1,0 +1,11 @@
+{
+  "unread": 7,
+  "received": 112,
+  "replied": 95,
+  "avg_frt_sec": 780,
+  "top_senders": [
+    {"from":"wordpress@kunde.de","count":18,"avg_frt_sec":540},
+    {"from":"info@domain.de","count":12,"avg_frt_sec":900}
+  ],
+  "by_hour": [2,1,0,0,0,1,4,7,9,14,18,10,8,7,11,12,9,6,5,4,3,2,2,1]
+}

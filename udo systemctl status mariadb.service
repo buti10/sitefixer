@@ -1,0 +1,147 @@
+Jun 27 22:24:43 serene-goldwasser.217-154-114-40.plesk.page systemd[1]: Starting mariadb.service - MariaDB 10.11.13 database server...
+[0;38;5;245m░░ [0m[0;32mSubject: A start job for unit mariadb.service has begun execution[0m
+[0;38;5;245m░░[0m [0;32mDefined-By: systemd[0m
+[0;38;5;245m░░[0m [0;32mSupport: http://www.ubuntu.com/support[0m
+[0;38;5;245m░░[0m [0;32m[0m
+[0;38;5;245m░░[0m [0;32mA start job for unit mariadb.service has begun execution.[0m
+[0;38;5;245m░░[0m [0;32m[0m
+[0;38;5;245m░░[0m [0;32mThe job identifier is 4027.[0m
+Jun 27 22:24:43 serene-goldwasser.217-154-114-40.plesk.page (mariadbd)[3581]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185mmariadb.service: Referenced but unset environment variable evaluates to an empty string: MYSQLD_OPTS, _WSREP_NEW_CLUSTER[0m
+Jun 27 22:24:43 serene-goldwasser.217-154-114-40.plesk.page mariadbd[3581]: 2025-06-27 22:24:43 0 [Note] Starting MariaDB 10.11.13-MariaDB-0ubuntu0.24.04.1 source revision 8fb09426b98583916ccfd4f8c49741adc115bac3 server_uid beOvuyPUGYkOpj5q1eK6XXCNu90= as process 3581
+Jun 27 22:24:43 serene-goldwasser.217-154-114-40.plesk.page mariadbd[3581]: 2025-06-27 22:24:43 0 [Note] InnoDB: Compressed tables use zlib 1.3
+Jun 27 22:24:43 serene-goldwasser.217-154-114-40.plesk.page mariadbd[3581]: 2025-06-27 22:24:43 0 [Note] InnoDB: Number of transaction pools: 1
+Jun 27 22:24:43 serene-goldwasser.217-154-114-40.plesk.page mariadbd[3581]: 2025-06-27 22:24:43 0 [Note] InnoDB: Using crc32 + pclmulqdq instructions
+Jun 27 22:24:43 serene-goldwasser.217-154-114-40.plesk.page mariadbd[3581]: 2025-06-27 22:24:43 0 [Note] InnoDB: Using liburing
+Jun 27 22:24:43 serene-goldwasser.217-154-114-40.plesk.page mariadbd[3581]: 2025-06-27 22:24:43 0 [Note] InnoDB: innodb_buffer_pool_size_max=128m, innodb_buffer_pool_size=128m
+Jun 27 22:24:43 serene-goldwasser.217-154-114-40.plesk.page mariadbd[3581]: 2025-06-27 22:24:43 0 [Note] InnoDB: Initialized memory pressure event listener
+Jun 27 22:24:43 serene-goldwasser.217-154-114-40.plesk.page mariadbd[3581]: 2025-06-27 22:24:43 0 [Note] InnoDB: Completed initialization of buffer pool
+Jun 27 22:24:43 serene-goldwasser.217-154-114-40.plesk.page mariadbd[3581]: 2025-06-27 22:24:43 0 [Note] InnoDB: File system buffers for log disabled (block size=512 bytes)
+Jun 27 22:24:43 serene-goldwasser.217-154-114-40.plesk.page mariadbd[3581]: 2025-06-27 22:24:43 0 [Note] InnoDB: End of log at LSN=10670439
+Jun 27 22:24:43 serene-goldwasser.217-154-114-40.plesk.page mariadbd[3581]: 2025-06-27 22:24:43 0 [Note] InnoDB: 128 rollback segments are active.
+Jun 27 22:24:43 serene-goldwasser.217-154-114-40.plesk.page mariadbd[3581]: 2025-06-27 22:24:43 0 [Note] InnoDB: Setting file './ibtmp1' size to 12.000MiB. Physically writing the file full; Please wait ...
+Jun 27 22:24:43 serene-goldwasser.217-154-114-40.plesk.page mariadbd[3581]: 2025-06-27 22:24:43 0 [Note] InnoDB: File './ibtmp1' size is now 12.000MiB.
+Jun 27 22:24:43 serene-goldwasser.217-154-114-40.plesk.page mariadbd[3581]: 2025-06-27 22:24:43 0 [Note] InnoDB: log sequence number 10670439; transaction id 14976
+Jun 27 22:24:43 serene-goldwasser.217-154-114-40.plesk.page mariadbd[3581]: 2025-06-27 22:24:43 0 [Note] InnoDB: Loading buffer pool(s) from /var/lib/mysql/ib_buffer_pool
+Jun 27 22:24:43 serene-goldwasser.217-154-114-40.plesk.page mariadbd[3581]: 2025-06-27 22:24:43 0 [Note] Plugin 'FEEDBACK' is disabled.
+Jun 27 22:24:43 serene-goldwasser.217-154-114-40.plesk.page mariadbd[3581]: 2025-06-27 22:24:43 0 [Warning] You need to use --log-bin to make --expire-logs-days or --binlog-expire-logs-seconds work.
+Jun 27 22:24:43 serene-goldwasser.217-154-114-40.plesk.page mariadbd[3581]: 2025-06-27 22:24:43 0 [Note] InnoDB: Buffer pool(s) load completed at 250627 22:24:43
+Jun 27 22:24:43 serene-goldwasser.217-154-114-40.plesk.page mariadbd[3581]: 2025-06-27 22:24:43 0 [Note] Server socket created on IP: '0.0.0.0'.
+Jun 27 22:24:43 serene-goldwasser.217-154-114-40.plesk.page mariadbd[3581]: 2025-06-27 22:24:43 0 [Note] /usr/sbin/mariadbd: ready for connections.
+Jun 27 22:24:43 serene-goldwasser.217-154-114-40.plesk.page mariadbd[3581]: Version: '10.11.13-MariaDB-0ubuntu0.24.04.1'  socket: '/run/mysqld/mysqld.sock'  port: 3306  Ubuntu 24.04
+Jun 27 22:24:43 serene-goldwasser.217-154-114-40.plesk.page systemd[1]: Started mariadb.service - MariaDB 10.11.13 database server.
+[0;38;5;245m░░ [0m[0;32mSubject: A start job for unit mariadb.service has finished successfully[0m
+[0;38;5;245m░░[0m [0;32mDefined-By: systemd[0m
+[0;38;5;245m░░[0m [0;32mSupport: http://www.ubuntu.com/support[0m
+[0;38;5;245m░░[0m [0;32m[0m
+[0;38;5;245m░░[0m [0;32mA start job for unit mariadb.service has finished successfully.[0m
+[0;38;5;245m░░[0m [0;32m[0m
+[0;38;5;245m░░[0m [0;32mThe job identifier is 4027.[0m
+Jun 27 22:24:43 serene-goldwasser.217-154-114-40.plesk.page /etc/mysql/debian-start[3598]: Upgrading MariaDB tables if necessary.
+Jun 27 22:24:43 serene-goldwasser.217-154-114-40.plesk.page /etc/mysql/debian-start[3609]: Checking for insecure root accounts.
+Jun 27 22:24:43 serene-goldwasser.217-154-114-40.plesk.page /etc/mysql/debian-start[3613]: Triggering myisam-recover for all MyISAM tables and aria-recover for all Aria tables
+Jun 27 22:24:58 serene-goldwasser.217-154-114-40.plesk.page mariadbd[3581]: 2025-06-27 22:24:58 31 [Warning] Access denied for user 'scanner_user'@'localhost' (using password: YES)
+Jun 27 22:25:00 serene-goldwasser.217-154-114-40.plesk.page mariadbd[3581]: 2025-06-27 22:25:00 32 [Warning] Access denied for user 'scanner_user'@'localhost' (using password: YES)
+Jun 27 22:25:14 serene-goldwasser.217-154-114-40.plesk.page mariadbd[3581]: 2025-06-27 22:25:14 0 [Note] /usr/sbin/mariadbd (initiated by: unknown): Normal shutdown
+Jun 27 22:25:14 serene-goldwasser.217-154-114-40.plesk.page systemd[1]: Stopping mariadb.service - MariaDB 10.11.13 database server...
+[0;38;5;245m░░ [0m[0;32mSubject: A stop job for unit mariadb.service has begun execution[0m
+[0;38;5;245m░░[0m [0;32mDefined-By: systemd[0m
+[0;38;5;245m░░[0m [0;32mSupport: http://www.ubuntu.com/support[0m
+[0;38;5;245m░░[0m [0;32m[0m
+[0;38;5;245m░░[0m [0;32mA stop job for unit mariadb.service has begun execution.[0m
+[0;38;5;245m░░[0m [0;32m[0m
+[0;38;5;245m░░[0m [0;32mThe job identifier is 4370.[0m
+Jun 27 22:25:14 serene-goldwasser.217-154-114-40.plesk.page mariadbd[3581]: 2025-06-27 22:25:14 0 [Note] InnoDB: FTS optimize thread exiting.
+Jun 27 22:25:14 serene-goldwasser.217-154-114-40.plesk.page mariadbd[3581]: 2025-06-27 22:25:14 0 [Note] InnoDB: Starting shutdown...
+Jun 27 22:25:14 serene-goldwasser.217-154-114-40.plesk.page mariadbd[3581]: 2025-06-27 22:25:14 0 [Note] InnoDB: Dumping buffer pool(s) to /var/lib/mysql/ib_buffer_pool
+Jun 27 22:25:14 serene-goldwasser.217-154-114-40.plesk.page mariadbd[3581]: 2025-06-27 22:25:14 0 [Note] InnoDB: Buffer pool(s) dump completed at 250627 22:25:14
+Jun 27 22:25:14 serene-goldwasser.217-154-114-40.plesk.page mariadbd[3581]: 2025-06-27 22:25:14 0 [Note] InnoDB: Removed temporary tablespace data file: "./ibtmp1"
+Jun 27 22:25:14 serene-goldwasser.217-154-114-40.plesk.page mariadbd[3581]: 2025-06-27 22:25:14 0 [Note] InnoDB: Shutdown completed; log sequence number 10670439; transaction id 14977
+Jun 27 22:25:14 serene-goldwasser.217-154-114-40.plesk.page mariadbd[3581]: 2025-06-27 22:25:14 0 [Note] /usr/sbin/mariadbd: Shutdown complete
+Jun 27 22:25:14 serene-goldwasser.217-154-114-40.plesk.page systemd[1]: mariadb.service: Deactivated successfully.
+[0;38;5;245m░░ [0m[0;32mSubject: Unit succeeded[0m
+[0;38;5;245m░░[0m [0;32mDefined-By: systemd[0m
+[0;38;5;245m░░[0m [0;32mSupport: http://www.ubuntu.com/support[0m
+[0;38;5;245m░░[0m [0;32m[0m
+[0;38;5;245m░░[0m [0;32mThe unit mariadb.service has successfully entered the 'dead' state.[0m
+Jun 27 22:25:14 serene-goldwasser.217-154-114-40.plesk.page systemd[1]: Stopped mariadb.service - MariaDB 10.11.13 database server.
+[0;38;5;245m░░ [0m[0;32mSubject: A stop job for unit mariadb.service has finished[0m
+[0;38;5;245m░░[0m [0;32mDefined-By: systemd[0m
+[0;38;5;245m░░[0m [0;32mSupport: http://www.ubuntu.com/support[0m
+[0;38;5;245m░░[0m [0;32m[0m
+[0;38;5;245m░░[0m [0;32mA stop job for unit mariadb.service has finished.[0m
+[0;38;5;245m░░[0m [0;32m[0m
+[0;38;5;245m░░[0m [0;32mThe job identifier is 4370 and the job result is done.[0m
+Jun 27 22:26:46 serene-goldwasser.217-154-114-40.plesk.page systemd[1]: Starting mariadb.service - MariaDB 10.11.13 database server...
+[0;38;5;245m░░ [0m[0;32mSubject: A start job for unit mariadb.service has begun execution[0m
+[0;38;5;245m░░[0m [0;32mDefined-By: systemd[0m
+[0;38;5;245m░░[0m [0;32mSupport: http://www.ubuntu.com/support[0m
+[0;38;5;245m░░[0m [0;32m[0m
+[0;38;5;245m░░[0m [0;32mA start job for unit mariadb.service has begun execution.[0m
+[0;38;5;245m░░[0m [0;32m[0m
+[0;38;5;245m░░[0m [0;32mThe job identifier is 5970.[0m
+Jun 27 22:26:47 serene-goldwasser.217-154-114-40.plesk.page (mariadbd)[5110]: [0;1;38;5;185m[0;1;39m[0;1;38;5;185mmariadb.service: Referenced but unset environment variable evaluates to an empty string: MYSQLD_OPTS, _WSREP_NEW_CLUSTER[0m
+Jun 27 22:26:47 serene-goldwasser.217-154-114-40.plesk.page mariadbd[5110]: 2025-06-27 22:26:47 0 [Note] Starting MariaDB 10.11.13-MariaDB-0ubuntu0.24.04.1 source revision 8fb09426b98583916ccfd4f8c49741adc115bac3 server_uid beOvuyPUGYkOpj5q1eK6XXCNu90= as process 5110
+Jun 27 22:26:47 serene-goldwasser.217-154-114-40.plesk.page mariadbd[5110]: 2025-06-27 22:26:47 0 [Note] InnoDB: Compressed tables use zlib 1.3
+Jun 27 22:26:47 serene-goldwasser.217-154-114-40.plesk.page mariadbd[5110]: 2025-06-27 22:26:47 0 [Note] InnoDB: Number of transaction pools: 1
+Jun 27 22:26:47 serene-goldwasser.217-154-114-40.plesk.page mariadbd[5110]: 2025-06-27 22:26:47 0 [Note] InnoDB: Using crc32 + pclmulqdq instructions
+Jun 27 22:26:47 serene-goldwasser.217-154-114-40.plesk.page mariadbd[5110]: 2025-06-27 22:26:47 0 [Note] InnoDB: Using liburing
+Jun 27 22:26:47 serene-goldwasser.217-154-114-40.plesk.page mariadbd[5110]: 2025-06-27 22:26:47 0 [Note] InnoDB: innodb_buffer_pool_size_max=128m, innodb_buffer_pool_size=128m
+Jun 27 22:26:47 serene-goldwasser.217-154-114-40.plesk.page mariadbd[5110]: 2025-06-27 22:26:47 0 [Note] InnoDB: Initialized memory pressure event listener
+Jun 27 22:26:47 serene-goldwasser.217-154-114-40.plesk.page mariadbd[5110]: 2025-06-27 22:26:47 0 [Note] InnoDB: Completed initialization of buffer pool
+Jun 27 22:26:47 serene-goldwasser.217-154-114-40.plesk.page mariadbd[5110]: 2025-06-27 22:26:47 0 [Note] InnoDB: File system buffers for log disabled (block size=512 bytes)
+Jun 27 22:26:47 serene-goldwasser.217-154-114-40.plesk.page mariadbd[5110]: 2025-06-27 22:26:47 0 [Note] InnoDB: End of log at LSN=10670439
+Jun 27 22:26:47 serene-goldwasser.217-154-114-40.plesk.page mariadbd[5110]: 2025-06-27 22:26:47 0 [Note] InnoDB: 128 rollback segments are active.
+Jun 27 22:26:47 serene-goldwasser.217-154-114-40.plesk.page mariadbd[5110]: 2025-06-27 22:26:47 0 [Note] InnoDB: Setting file './ibtmp1' size to 12.000MiB. Physically writing the file full; Please wait ...
+Jun 27 22:26:47 serene-goldwasser.217-154-114-40.plesk.page mariadbd[5110]: 2025-06-27 22:26:47 0 [Note] InnoDB: File './ibtmp1' size is now 12.000MiB.
+Jun 27 22:26:47 serene-goldwasser.217-154-114-40.plesk.page mariadbd[5110]: 2025-06-27 22:26:47 0 [Note] InnoDB: log sequence number 10670439; transaction id 14976
+Jun 27 22:26:47 serene-goldwasser.217-154-114-40.plesk.page mariadbd[5110]: 2025-06-27 22:26:47 0 [Note] InnoDB: Loading buffer pool(s) from /var/lib/mysql/ib_buffer_pool
+Jun 27 22:26:47 serene-goldwasser.217-154-114-40.plesk.page mariadbd[5110]: 2025-06-27 22:26:47 0 [Note] Plugin 'FEEDBACK' is disabled.
+Jun 27 22:26:47 serene-goldwasser.217-154-114-40.plesk.page mariadbd[5110]: 2025-06-27 22:26:47 0 [Warning] You need to use --log-bin to make --expire-logs-days or --binlog-expire-logs-seconds work.
+Jun 27 22:26:47 serene-goldwasser.217-154-114-40.plesk.page mariadbd[5110]: 2025-06-27 22:26:47 0 [Note] InnoDB: Buffer pool(s) load completed at 250627 22:26:47
+Jun 27 22:26:47 serene-goldwasser.217-154-114-40.plesk.page mariadbd[5110]: 2025-06-27 22:26:47 0 [Note] Server socket created on IP: '0.0.0.0'.
+Jun 27 22:26:47 serene-goldwasser.217-154-114-40.plesk.page mariadbd[5110]: 2025-06-27 22:26:47 0 [Note] /usr/sbin/mariadbd: ready for connections.
+Jun 27 22:26:47 serene-goldwasser.217-154-114-40.plesk.page mariadbd[5110]: Version: '10.11.13-MariaDB-0ubuntu0.24.04.1'  socket: '/run/mysqld/mysqld.sock'  port: 3306  Ubuntu 24.04
+Jun 27 22:26:47 serene-goldwasser.217-154-114-40.plesk.page systemd[1]: Started mariadb.service - MariaDB 10.11.13 database server.
+[0;38;5;245m░░ [0m[0;32mSubject: A start job for unit mariadb.service has finished successfully[0m
+[0;38;5;245m░░[0m [0;32mDefined-By: systemd[0m
+[0;38;5;245m░░[0m [0;32mSupport: http://www.ubuntu.com/support[0m
+[0;38;5;245m░░[0m [0;32m[0m
+[0;38;5;245m░░[0m [0;32mA start job for unit mariadb.service has finished successfully.[0m
+[0;38;5;245m░░[0m [0;32m[0m
+[0;38;5;245m░░[0m [0;32mThe job identifier is 5970.[0m
+Jun 27 22:26:47 serene-goldwasser.217-154-114-40.plesk.page /etc/mysql/debian-start[5127]: Upgrading MariaDB tables if necessary.
+Jun 27 22:26:47 serene-goldwasser.217-154-114-40.plesk.page /etc/mysql/debian-start[5138]: Checking for insecure root accounts.
+Jun 27 22:26:47 serene-goldwasser.217-154-114-40.plesk.page /etc/mysql/debian-start[5142]: Triggering myisam-recover for all MyISAM tables and aria-recover for all Aria tables
+Jun 27 22:26:57 serene-goldwasser.217-154-114-40.plesk.page mariadbd[5110]: 2025-06-27 22:26:57 31 [Warning] Access denied for user 'scanner_user'@'localhost' (using password: YES)
+Jun 27 22:27:05 serene-goldwasser.217-154-114-40.plesk.page mariadbd[5110]: 2025-06-27 22:27:05 32 [Warning] Access denied for user 'scanner_user'@'localhost' (using password: YES)
+Jun 27 22:27:10 serene-goldwasser.217-154-114-40.plesk.page mariadbd[5110]: 2025-06-27 22:27:10 33 [Warning] Access denied for user 'scanner_user'@'localhost' (using password: YES)
+Jun 27 22:27:47 serene-goldwasser.217-154-114-40.plesk.page systemd[1]: Stopping mariadb.service - MariaDB 10.11.13 database server...
+[0;38;5;245m░░ [0m[0;32mSubject: A stop job for unit mariadb.service has begun execution[0m
+[0;38;5;245m░░[0m [0;32mDefined-By: systemd[0m
+[0;38;5;245m░░[0m [0;32mSupport: http://www.ubuntu.com/support[0m
+[0;38;5;245m░░[0m [0;32m[0m
+[0;38;5;245m░░[0m [0;32mA stop job for unit mariadb.service has begun execution.[0m
+[0;38;5;245m░░[0m [0;32m[0m
+[0;38;5;245m░░[0m [0;32mThe job identifier is 6426.[0m
+Jun 27 22:27:47 serene-goldwasser.217-154-114-40.plesk.page mariadbd[5110]: 2025-06-27 22:27:47 0 [Note] /usr/sbin/mariadbd (initiated by: unknown): Normal shutdown
+Jun 27 22:27:47 serene-goldwasser.217-154-114-40.plesk.page mariadbd[5110]: 2025-06-27 22:27:47 0 [Note] InnoDB: FTS optimize thread exiting.
+Jun 27 22:27:47 serene-goldwasser.217-154-114-40.plesk.page mariadbd[5110]: 2025-06-27 22:27:47 0 [Note] InnoDB: Starting shutdown...
+Jun 27 22:27:47 serene-goldwasser.217-154-114-40.plesk.page mariadbd[5110]: 2025-06-27 22:27:47 0 [Note] InnoDB: Dumping buffer pool(s) to /var/lib/mysql/ib_buffer_pool
+Jun 27 22:27:47 serene-goldwasser.217-154-114-40.plesk.page mariadbd[5110]: 2025-06-27 22:27:47 0 [Note] InnoDB: Buffer pool(s) dump completed at 250627 22:27:47
+Jun 27 22:27:48 serene-goldwasser.217-154-114-40.plesk.page mariadbd[5110]: 2025-06-27 22:27:48 0 [Note] InnoDB: Removed temporary tablespace data file: "./ibtmp1"
+Jun 27 22:27:48 serene-goldwasser.217-154-114-40.plesk.page mariadbd[5110]: 2025-06-27 22:27:48 0 [Note] InnoDB: Shutdown completed; log sequence number 10670439; transaction id 14977
+Jun 27 22:27:48 serene-goldwasser.217-154-114-40.plesk.page mariadbd[5110]: 2025-06-27 22:27:48 0 [Note] /usr/sbin/mariadbd: Shutdown complete
+Jun 27 22:27:48 serene-goldwasser.217-154-114-40.plesk.page systemd[1]: mariadb.service: Deactivated successfully.
+[0;38;5;245m░░ [0m[0;32mSubject: Unit succeeded[0m
+[0;38;5;245m░░[0m [0;32mDefined-By: systemd[0m
+[0;38;5;245m░░[0m [0;32mSupport: http://www.ubuntu.com/support[0m
+[0;38;5;245m░░[0m [0;32m[0m
+[0;38;5;245m░░[0m [0;32mThe unit mariadb.service has successfully entered the 'dead' state.[0m
+Jun 27 22:27:48 serene-goldwasser.217-154-114-40.plesk.page systemd[1]: Stopped mariadb.service - MariaDB 10.11.13 database server.
+[0;38;5;245m░░ [0m[0;32mSubject: A stop job for unit mariadb.service has finished[0m
+[0;38;5;245m░░[0m [0;32mDefined-By: systemd[0m
+[0;38;5;245m░░[0m [0;32mSupport: http://www.ubuntu.com/support[0m
+[0;38;5;245m░░[0m [0;32m[0m
+[0;38;5;245m░░[0m [0;32mA stop job for unit mariadb.service has finished.[0m
+[0;38;5;245m░░[0m [0;32m[0m
+[0;38;5;245m░░[0m [0;32mThe job identifier is 6426 and the job result is done.[0m

@@ -1,0 +1,5 @@
+[
+  {"id":201,"visitor":"Unbekannt (Chrome)","page":"/kontakt","status":"waiting","waiting_since":"2025-10-27T10:12:00Z","message_count":3,"last_from":"visitor"},
+  {"id":202,"visitor":"kunde@ex.de","page":"/produkt","status":"active","waiting_since":"2025-10-27T10:05:00Z","message_count":12,"last_from":"agent"},
+  {"id":203,"visitor":"support@kunde24.de","page":"/hilfe","status":"closed","waiting_since":"2025-10-27T09:45:00Z","message_count":5,"last_from":"agent"}
+]

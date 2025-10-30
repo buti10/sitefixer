@@ -1,0 +1,6 @@
+mysql.connector.connect(
+    host="217.154.114.40",  # IP deines ALTEN Servers
+    user="wpuser",
+    password="DEINPASSWORT",
+    database="sitefixer_scanner"
+)

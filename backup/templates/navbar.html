@@ -1,0 +1,40 @@
+<nav class="navbar navbar-expand-lg bg-white py-2 mb-4 shadow-sm sticky-top" id="navbarMain">
+    <div class="container-fluid">
+      <a class="navbar-brand fw-bold text-primary-emphasis d-flex align-items-center" href="{{ url_for('dashboard') }}">
+        <i class="bi bi-shield-check fs-4 me-2"></i>
+        <span>Sitefixer <span class="text-primary">SCAN</span></span>
+      </a>
+      <div class="ms-auto d-flex align-items-center">
+        <button class="btn btn-light border me-2" id="toggleMode" title="Dark/Light-Mode">
+          <i class="bi bi-moon-fill" id="modeIcon"></i>
+        </button>
+        <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center" style="width:38px; height:38px; font-size:1.1rem;">
+          KD
+        </div>
+      </div>
+    </div>
+  </nav>
+  <script>
+  const body = document.getElementById('mainBody') || document.body;
+  const modeBtn = document.getElementById('toggleMode');
+  const modeIcon = document.getElementById('modeIcon');
+  let darkMode = localStorage.getItem('darkMode') === 'true';
+  
+  function setMode(dark) {
+      if (dark) {
+          body.classList.add('dark-mode');
+          document.getElementById('navbarMain')?.classList.add('bg-dark', 'navbar-dark');
+          modeIcon.classList.remove('bi-moon-fill');
+          modeIcon.classList.add('bi-sun-fill');
+      } else {
+          body.classList.remove('dark-mode');
+          document.getElementById('navbarMain')?.classList.remove('bg-dark', 'navbar-dark');
+          modeIcon.classList.remove('bi-sun-fill');
+          modeIcon.classList.add('bi-moon-fill');
+      }
+      localStorage.setItem('darkMode', dark);
+  }
+  setMode(darkMode);
+  modeBtn.onclick = () => { darkMode = !darkMode; setMode(darkMode); }
+  </script>
+  

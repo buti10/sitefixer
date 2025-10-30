@@ -1,0 +1,15 @@
+{
+  "total_visitors": 1245,
+  "chats_started": 87,
+  "avg_wait_sec": 23,
+  "cobrowse": 12,
+  "top_pages": [
+    {"url":"https://kundenseite.de/produkt", "views": 310, "chats": 18},
+    {"url":"https://kundenseite.de/checkout", "views": 190, "chats": 26}
+  ],
+  "top_referrers": [
+    {"ref":"google", "visitors": 520, "chats": 41},
+    {"ref":"direct", "visitors": 400, "chats": 22}
+  ],
+  "by_hour": [8,6,4,3,2,1,1,2,5,15,28,42,50,61,58,47,39,30,22,18,14,12,10,9]
+}

@@ -1,0 +1,29 @@
+[
+  {
+    "id": 101,
+    "type": "mail",
+    "subject": "Fehler 500 auf Kundenseite",
+    "from": "kunde@ex.de",
+    "status": "open",
+    "time": "2025-10-27T10:10:00",
+    "preview": "Hallo, meine WordPress Seite zeigt seit heute einen Fehler 500..."
+  },
+  {
+    "id": 102,
+    "type": "mail",
+    "subject": "SEO Optimierung Angebot",
+    "from": "kontakt@agentur.de",
+    "status": "closed",
+    "time": "2025-10-26T08:32:00",
+    "preview": "Wir hätten Interesse an einer SEO-Analyse..."
+  },
+  {
+    "id": 103,
+    "type": "mail",
+    "subject": "Rechnung nicht erhalten",
+    "from": "support@kunde24.de",
+    "status": "waiting",
+    "time": "2025-10-27T09:41:00",
+    "preview": "Könnten Sie mir bitte die letzte Rechnung erneut zusenden?"
+  }
+]

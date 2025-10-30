@@ -1,0 +1,5 @@
+{ "id":101,"subject":"WP Fehler 500","status":"open","assignee":null,
+  "messages":[
+    {"id":1,"dir":"in","ts":"2025-10-27T09:10:00Z","from":"kunde@ex.de","html":"Hallo, Fehler 500."}
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "cms": "wordpress",
+  "version": "6.6.2",
+  "channel": "stable",
+  "hashes": {
+    "algo": "sha256",
+    "files": { "wp-includes/version.php": "abc123...", "...": "..." }
+  },
+  "meta": {
+    "source": "upstream tarball url or commit",
+    "built_at": "2025-10-15T08:30:00Z"
+  }
+}

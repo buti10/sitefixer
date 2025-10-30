@@ -1,0 +1,105 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="container-fluid py-5" style="max-width:1400px">
+    <h2 class="mb-4"><i class="bi bi-graph-up"></i> SEO Scan für <b>{{ results.domain if results else '' }}</b></h2>
+    <form method="post" class="mb-4 d-flex justify-content-center">
+        <input type="text" name="domain" class="form-control w-50 me-2" placeholder="z. B. google.de oder https://domain.com" required value="{{ domain or (results.domain if results else '') }}">
+        <button class="btn btn-info"><i class="bi bi-search"></i> Scan starten</button>
+    </form>
+    {% if results %}
+    <div class="row gx-4 gy-4">
+        <!-- Score & Status -->
+        <div class="col-12 col-md-3">
+            <div class="dashboard-card mb-3 text-center">
+                <h5>Audit-Score</h5>
+                <div style="font-size:2.4rem;font-weight:800">
+                    {{ 100 if not results.errors else (100 - results.errors|length*15) }}<span style="font-size:1rem">/100</span>
+                </div>
+                <div class="text-muted">Seitenqualität</div>
+            </div>
+            <div class="dashboard-card">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item"><b>Status:</b> {{ results.status_code }}</li>
+                    <li class="list-group-item"><b>SSL:</b> {% if results.ssl %}<span class="badge bg-success">Ja</span>{% else %}<span class="badge bg-danger">Nein</span>{% endif %}</li>
+                    <li class="list-group-item"><b>Indexierbarkeit:</b> {% if results.indexable %}<span class="badge bg-success">Indexiert</span>{% else %}<span class="badge bg-warning text-dark">Noindex</span>{% endif %}</li>
+                </ul>
+            </div>
+        </div>
+        <!-- OnPage-Daten -->
+        <div class="col-12 col-md-6">
+            <div class="dashboard-card mb-3">
+                <h5>OnPage-Daten</h5>
+                <ul class="list-group mb-2">
+                    <li class="list-group-item"><b>Titel:</b> {{ results.title }}</li>
+                    <li class="list-group-item"><b>Meta-Description:</b> {{ results.meta_description }}</li>
+                    <li class="list-group-item"><b>H1:</b> {{ results.h1|length }} ({{ results.h1|join(', ') }})</li>
+                    <li class="list-group-item"><b>H2:</b> {{ results.h2|length }}</li>
+                    <li class="list-group-item"><b>Wortanzahl:</b> {{ results.word_count }}</li>
+                    <li class="list-group-item"><b>Canonical:</b> {{ results.canonical }}</li>
+                    <li class="list-group-item"><b>Bilder ohne ALT:</b> {{ results.img_missing_alt }} von {{ results.img_count }}</li>
+                    <li class="list-group-item"><b>Mobile optimiert:</b> {% if results.mobile_friendly %}<span class="badge bg-success">Ja</span>{% else %}<span class="badge bg-danger">Nein</span>{% endif %}</li>
+                    <li class="list-group-item"><b>Structured Data:</b> {% if results.structured_data %}<span class="badge bg-success">Ja</span>{% else %}<span class="badge bg-danger">Nein</span>{% endif %}</li>
+                </ul>
+            </div>
+            <div class="dashboard-card mb-3">
+                <h5>Link-Analyse</h5>
+                <div><b>Interne Links:</b> {{ results.internal_links|length }}</div>
+                <div><b>Externe Links:</b> {{ results.external_links|length }}</div>
+                <div><b>Broken Links:</b> <span class="badge bg-danger">{{ results.broken_external_links|length }}</span></div>
+                {% if results.broken_external_links %}
+                <ul>
+                {% for link in results.broken_external_links %}
+                    <li><a href="{{ link }}" target="_blank">{{ link }}</a></li>
+                {% endfor %}
+                </ul>
+                {% endif %}
+            </div>
+        </div>
+        <!-- Empfehlungen & Fehler -->
+        <div class="col-12 col-md-3">
+            <div class="dashboard-card mb-3">
+                <h5>Empfehlungen & ToDos</h5>
+                {% if results.recommendations %}
+                    <ul>
+                        {% for r in results.recommendations %}
+                        <li class="text-danger"><i class="bi bi-exclamation-circle"></i> {{ r }}</li>
+                        {% endfor %}
+                    </ul>
+                {% else %}
+                    <span class="text-success">Keine dringenden ToDos gefunden!</span>
+                {% endif %}
+                {% if results.warnings %}
+                    <ul class="mt-2">
+                        {% for w in results.warnings %}
+                        <li class="text-warning"><i class="bi bi-info-circle"></i> {{ w }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+                {% if results.errors %}
+                    <ul class="mt-2">
+                        {% for e in results.errors %}
+                        <li class="text-danger"><i class="bi bi-x-circle"></i> {{ e }}</li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </div>
+            <div class="dashboard-card">
+                <h5>Social/Rich Media</h5>
+                <div><b>OpenGraph:</b> {% if results.open_graph %}<span class="badge bg-success">Ja</span>{% else %}<span class="badge bg-danger">Nein</span>{% endif %}</div>
+                <div><b>Twitter Card:</b> {% if results.twitter_card %}<span class="badge bg-success">Ja</span>{% else %}<span class="badge bg-danger">Nein</span>{% endif %}</div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+<style>
+.dashboard-card {
+    border: 1px solid #eee;
+    border-radius: 1.5rem;
+    padding: 1.2rem 1rem 1rem 1.2rem;
+    box-shadow: 0 2px 10px 0 #eee;
+    margin-bottom: 1.5rem;
+    background: #fff;
+}
+</style>
+{% endblock %}

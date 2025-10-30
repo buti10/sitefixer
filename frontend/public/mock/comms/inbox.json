@@ -1,0 +1,7 @@
+{
+  "counters": { "mail": 2, "chat": 1 },
+  "items": [
+    { "id": 101, "type": "mail", "subject": "WP Fehler 500", "from": "kunde@ex.de", "status": "open", "ts": "2025-10-27T09:10:00Z" },
+    { "id": 202, "type": "chat", "subject": "Malware Verdacht", "status": "waiting", "ts": "2025-10-27T09:12:00Z" }
+  ]
+}

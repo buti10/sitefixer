@@ -1,0 +1,39 @@
+from .extensions import db
+from sqlalchemy.dialects.mysql import ENUM, LONGTEXT
+
+class RestorePoint(db.Model):
+    __tablename__ = "restore_points"
+    id = db.Column(db.Integer, primary_key=True)
+    ticket_id = db.Column(db.Integer, nullable=False)
+    sid = db.Column(db.String(64), nullable=False, index=True)
+    root_path = db.Column(db.String(512), nullable=False)
+    bytes_delta = db.Column(db.BigInteger, default=0)
+    manifest = db.Column(LONGTEXT)      # JSON als Text, MariaDB-kompatibel
+    created_at = db.Column(db.DateTime, server_default=db.func.current_timestamp())
+    notes = db.Column(db.Text)
+
+class Quarantine(db.Model):
+    __tablename__ = "quarantine"
+    id = db.Column(db.Integer, primary_key=True)
+    ticket_id = db.Column(db.Integer, nullable=False)
+    sid = db.Column(db.String(64), nullable=False, index=True)
+    original_path = db.Column(db.String(1024), nullable=False)
+    stored_path = db.Column(db.String(1024), nullable=False)
+    reason = db.Column(db.String(255))
+    signature_hint = db.Column(db.String(255))
+    hash_original = db.Column(db.String(64))
+    created_at = db.Column(db.DateTime, server_default=db.func.current_timestamp())
+
+class ActionsLog(db.Model):
+    __tablename__ = "actions_log"
+    id = db.Column(db.Integer, primary_key=True)
+    ticket_id = db.Column(db.Integer, nullable=False, index=True)
+    sid = db.Column(db.String(64), nullable=False, index=True)
+    scan_id = db.Column(db.String(64), index=True)
+    action = db.Column(db.String(64), nullable=False)
+    status = db.Column(ENUM('planned','running','done','failed','rolled_back'),
+                       nullable=False, server_default='planned', index=True)
+    details = db.Column(LONGTEXT)       # statt JSON → MariaDB ohne Warnung
+    files = db.Column(LONGTEXT)
+    started_at = db.Column(db.DateTime)
+    finished_at = db.Column(db.DateTime)

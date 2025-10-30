@@ -1,0 +1,25 @@
+matcher:
+  cms: wordpress
+  version_range: ">=6.5,<6.7"
+  fingerprint:
+    - path: wp-includes/version.php
+      contains: "wp_version = '6."
+fixes:
+  normalize_permissions:
+    - path: "wp-content"
+      dir: "0755"
+      file: "0644"
+  replace_core:
+    include_globs:
+      - "wp-admin/**"
+      - "wp-includes/**"
+    exclude_globs:
+      - "wp-includes/languages/**"
+  htaccess_templates:
+    stock: |
+      # standard wp htaccess …
+  diagnostics:
+    quick_checks:
+      - name: "index.php front-controller"
+        path: "index.php"
+        contains: "WP_USE_THEMES"

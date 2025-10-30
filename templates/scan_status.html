@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block title %}Scanstatus • Malware-Scan{% endblock %}
+{% block content %}
+<style>
+    .card-stats {
+      border-radius: 18px;
+      padding: 18px 0 10px 0;
+      box-shadow: 0 2px 12px 0 #eaeaea66;
+      min-width: 120px;
+    }
+    .span {
+        font-size: 80px;
+    }
+    </style>
+    
+<div class="container py-4">
+    <div class="dashboard-card mx-auto" style="max-width:1650px;">
+      <div class="mb-3 d-flex justify-content-between align-items-center">
+        <h2><i class="bi bi-bug"></i> Malware-Scan <span class="text-muted">#{{ scan_id }}</span></h2>
+        <span id="scanStatusBadge" class="badge fs-5 px-3 py-2 bg-{{ 'danger' if scan.rot > 0 else 'warning' if scan.orange > 0 else 'success' }}">
+            {{ 'KRITISCH' if scan.rot > 0 else 'WARNUNG' if scan.orange > 0 else 'SAUBER' }}
+          </span>
+      </div>
+      <!-- Statistiken -->
+      <div class="row text-center mb-4 gap-2">
+        <div class="col card-stats bg-info text-white">
+            <div class="fw-bold small"><i class="bi bi-files"></i> Gesamt</div>
+            <div class="display-6"><span id="stat_total">{{ scan.total_files }}</span></div>
+          </div>
+          <div class="col card-stats bg-primary text-white">
+            <div class="fw-bold small"><i class="bi bi-search"></i> Gescannt</div>
+            <div class="display-6"><span id="stat_checked">{{ scan.checked_files }}</span></div>
+          </div>
+          <div class="col card-stats bg-danger text-white">
+            <div class="fw-bold small"><i class="bi bi-exclamation-triangle"></i> Kritisch</div>
+            <div class="display-6"><span id="stat_rot">{{ scan.rot }}</span></div>
+          </div>
+          <div class="col card-stats bg-warning text-white">
+            <div class="fw-bold small"><i class="bi bi-exclamation-circle"></i> Warnung</div>
+            <div class="display-6"><span id="stat_orange">{{ scan.orange }}</span></div>
+          </div>
+          <div class="col card-stats bg-success text-white">
+            <div class="fw-bold small"><i class="bi bi-shield-check"></i> Clean</div>
+            <div class="display-6"><span id="stat_gruen">{{ scan.gruen }}</span></div>
+          </div>
+          
+      </div>
+      
+      <!-- Progressbar -->
+      <div class="mb-2 fw-bold">
+        Fortschritt: <div id="progressText">0/0</div> Dateien gescannt
+      </div>
+      <div class="progress mb-4" style="height: 22px;">
+        <div id="progressBar" class="progress-bar progress-bar-striped bg-info" role="progressbar" style="width: 0%">
+          0%
+        </div>
+      </div>
+      <div class="mb-2">
+        Aktuelle Datei: <code id="currentFile">-</code>
+      </div>
+      
+      <div id="scanHint" class="alert alert-info" style="display:none">
+        Der Scan wird vorbereitet…<br>
+        Bitte habe etwas Geduld – bei großen Projekten kann das initiale Einlesen aller Dateien paar Minuten dauern!
+      </div>
+      
+      <div class="mb-3 text-muted small">
+        Gestartet: {{ scan.started_at or "-" }} |
+        Dauer: {{ scan.duration or "-" }}s |
+        Status: <span id="scanStatusText">{{ 'Abgeschlossen' if scan.checked_files == scan.total_files else 'Scan läuft...' }}</span>
+      </div>
+      <!-- Fundtabelle -->
+      <div class="table-responsive mt-4">
+        <table class="table table-striped table-hover align-middle" id="fundTable">
+          <thead class="table-dark">
+            <tr>
+              <th>Dateiname</th>
+              <th>Status</th>
+              <th>Zeile</th>
+              <th>Pattern</th>
+              <th>Snippet</th>
+            </tr>
+          </thead>
+          <tbody id="fundList">
+            <!-- Wird per AJAX befüllt, z. B.: -->
+            <!---
+            <tr>
+              <td>wp-content/plugins/foo.php</td>
+              <td><span class="badge bg-danger">Kritisch</span></td>
+              <td>42</td>
+              <td>eval(...)</td>
+              <td><button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#snippetModal" data-snippet="....">Anzeigen</button></td>
+            </tr>
+            --->
+          </tbody>
+        </table>
+        <div id="noFindings" class="text-center text-success my-3" style="display:none;">
+          🎉 Keine Bedrohungen oder Warnungen gefunden!
+        </div>
+      </div>
+      <!-- Aktionen -->
+      <div class="mt-4 d-flex gap-2">
+        <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary"><i class="bi bi-arrow-left"></i> Zurück</a>
+        <a id="btnExportPDF" href="/scan/export/pdf/{{ scan_id }}" class="btn btn-outline-primary"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
+        <a id="btnExportJSON" href="/scan/export/json/{{ scan_id }}" class="btn btn-outline-success"><i class="bi bi-file-earmark-code"></i> JSON</a>
+      </div>
+    </div>
+  </div>
+  
+  
+<script>
+function reloadProgress() {
+  fetch('/scan/progress/{{ scan_id }}')
+    .then(res => res.json()).then(data => {
+      if (data.total_files === 0) {
+        document.getElementById('scanHint').style.display = 'block';
+      } else {
+        document.getElementById('scanHint').style.display = 'none';
+      }
+      document.getElementById('progressText').innerText = `${data.checked_files}/${data.total_files}`;
+      document.getElementById('progressBar').style.width = (data.total_files ? (data.checked_files / data.total_files * 100) : 0) + '%';
+      document.getElementById('progressBar').innerText = (data.total_files ? Math.round(data.checked_files / data.total_files * 100) : 0) + '%';
+      document.getElementById('currentFile').innerText = data.current_file;
+      // Nur stat_* updaten, NICHT rot/orange/gruen extra!
+      document.getElementById('stat_total').innerText = data.total_files;
+      document.getElementById('stat_checked').innerText = data.checked_files;
+      document.getElementById('stat_rot').innerText = data.rot;
+      document.getElementById('stat_orange').innerText = data.orange;
+      document.getElementById('stat_gruen').innerText = data.gruen;
+      document.getElementById('scanStatusText').innerText =
+        (data.checked_files == data.total_files) ? 'Abgeschlossen' : 'Scan läuft...';
+
+      let badge = document.getElementById('scanStatusBadge');
+      if (data.rot > 0) {
+          badge.className = 'badge fs-5 px-3 py-2 bg-danger';
+          badge.innerText = 'KRITISCH';
+      } else if (data.orange > 0) {
+          badge.className = 'badge fs-5 px-3 py-2 bg-warning';
+          badge.innerText = 'WARNUNG';
+      } else {
+          badge.className = 'badge fs-5 px-3 py-2 bg-success';
+          badge.innerText = 'SAUBER';
+      }
+
+      // Funde nachladen
+      fetch('/scan/findings/{{ scan_id }}')
+        .then(res => res.json()).then(findings => {
+          let html = '';
+          for(let f of findings) {
+            let badgeClass = f.level === 'rot' ? 'bg-danger' : (f.level === 'orange' ? 'bg-warning text-dark' : 'bg-success');
+            let badgeText = f.level === 'rot' ? 'Kritisch' : (f.level === 'orange' ? 'Warnung' : 'Clean');
+            html += `<tr>
+              <td>${f.file}</td>
+              <td><span class="badge ${badgeClass}">${badgeText}</span></td>
+              <td>${f.line}</td>
+              <td>${f.pattern}</td>
+              <td><code>${f.snippet}</code></td>
+            </tr>`;
+          }
+          document.getElementById('fundList').innerHTML = html;
+
+          // Zeige "keine Funde"-Nachricht, wenn keine Funde
+          if(findings.length === 0) {
+            document.getElementById('noFindings').style.display = 'block';
+          } else {
+            document.getElementById('noFindings').style.display = 'none';
+          }
+        });
+    });
+}
+// Alle 2s updaten
+setInterval(reloadProgress, 2000);
+reloadProgress();
+
+</script>
+{% endblock %}

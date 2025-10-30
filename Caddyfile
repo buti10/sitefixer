@@ -1,0 +1,50 @@
+scann.sitefixer.de {
+    encode zstd gzip
+
+    route {
+        # phpMyAdmin zuerst
+        handle_path /pma/* {
+            root * /usr/share/phpmyadmin
+            php_fastcgi unix//var/run/php/php8.2-fpm.sock
+            basicauth {
+                admin $2a$14$6WBg0U6uFw6CDsBVnviEOO8mo0zh1o1NjhG0GZlT65huHjbWV7TTW
+            }
+            file_server
+        }
+
+        # Scanner-API -> 8001
+        @scanner path /api/sftp/* /api/scan/*
+        handle @scanner {
+            reverse_proxy 127.0.0.1:8001
+        }
+
+        # Core-Cache -> 8000
+        handle_path /api/core-cache/* {
+            reverse_proxy 127.0.0.1:8000
+        }
+        handle /core-cache/* {
+            request_body { max_size 2GB }
+            reverse_proxy 127.0.0.1:8000
+        }
+
+        # übrige API -> 8000
+        handle /api/* {
+            reverse_proxy 127.0.0.1:8000
+        }
+
+        # SPA zuletzt
+        handle {
+            root * /var/www/sitefixer/frontend/dist
+            try_files {path} /index.html
+            file_server
+        }
+    }
+
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "no-referrer-when-downgrade"
+        Permissions-Policy "geolocation=(), microphone=(), camera=()"
+    }
+}
