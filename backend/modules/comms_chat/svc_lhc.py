@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Union
 import requests
 from requests.auth import HTTPBasicAuth
 from werkzeug.utils import secure_filename
-
+MOCK = os.getenv("LHC_MOCK") == "1"
 log = logging.getLogger(__name__)
 
 # ── Einheitliche ENV-Variablen ────────────────────────────────────────────────
@@ -47,9 +47,11 @@ def _req(method: str, path: str, **kw) -> requests.Response:
 
 # ── Health/Debug ──────────────────────────────────────────────────────────────
 def lhc_health() -> Dict[str, Any]:
-    # minimaler Check: REST antwortet
-    return {"ok": True, "base": BASE}
-
+    if MOCK:
+        return {"version": "mock", "time": "now"}
+    else:
+        return _req("GET", "health").json() or {"ok": True}
+    
 def lhc_raw_chats(params=None) -> Any:
     return _req("GET", "chats", params=params or {"limit": 10}).json()
 

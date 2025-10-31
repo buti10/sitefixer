@@ -6,6 +6,8 @@ from .svc_lhc import (
     lhc_inbox, lhc_accept, lhc_messages, lhc_send, lhc_upload,
     lhc_health, lhc_raw_chats, LHCError
 )
+import logging
+log = logging.getLogger("comms_chat")
 
 bp = Blueprint("comms_chat", __name__, url_prefix="/api/comms/chat")
 
@@ -15,7 +17,9 @@ def _ok(data):
 
 def _err(e: Exception):
     code = 502 if isinstance(e, LHCError) else 500
+    log.exception("comms_chat error: %s", e)
     return jsonify({"error": str(e)}), code
+
 
 def _filter_since_id(items: List[Dict[str, Any]], last: Optional[int]) -> List[Dict[str, Any]]:
     if not last:
@@ -87,5 +91,13 @@ def dbg_health():
 def dbg_raw():
     try:
         return _ok(lhc_raw_chats())
+    except Exception as e:
+        return _err(e)
+    
+@bp.route("/health", methods=["GET"])
+def health():
+    try:
+        info = lhc_health(timeout=3.0)
+        return _ok({"ok": True, "lhc": info})
     except Exception as e:
         return _err(e)
