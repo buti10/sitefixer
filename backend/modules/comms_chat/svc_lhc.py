@@ -1,6 +1,6 @@
 # app/modules/comms_chat/svc_lhc.py
 from typing import Any, Dict, List, Optional, Union
-import os, logging
+import os, logging, time
 import requests
 from requests.auth import HTTPBasicAuth
 from werkzeug.utils import secure_filename
@@ -90,7 +90,11 @@ def lhc_inbox() -> List[Dict[str, Any]]:
     for it in rows:
         cid = it.get("id") or it.get("chat_id")
         # Status kann als Zahl, Label oder Text kommen
-        raw_status = (it.get("status_label") or it.get("status") or "").strip().lower()
+        _val = it.get("status_label")
+if _val is None:
+    _val = it.get("status")
+raw_status = ("" if _val is None else str(_val)).strip().lower()
+
         # message_count: mehrere Feldnamen möglich
         unread = (
             it.get("has_unread_messages")
