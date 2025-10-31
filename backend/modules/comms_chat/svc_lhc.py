@@ -1,12 +1,10 @@
 # app/modules/comms_chat/svc_lhc.py
-import os
-import time
-import logging
 from typing import Any, Dict, List, Optional, Union
-
+import os, logging
 import requests
 from requests.auth import HTTPBasicAuth
 from werkzeug.utils import secure_filename
+
 MOCK = os.getenv("LHC_MOCK") == "1"
 log = logging.getLogger(__name__)
 
@@ -46,11 +44,11 @@ def _req(method: str, path: str, **kw) -> requests.Response:
     return r
 
 # ── Health/Debug ──────────────────────────────────────────────────────────────
-def lhc_health() -> Dict[str, Any]:
+def lhc_health(timeout: float = 3.0) -> Dict[str, Any]:
     if MOCK:
         return {"version": "mock", "time": "now"}
-    else:
-        return _req("GET", "health").json() or {"ok": True}
+    # timeout wird von _req bereits respektiert, wenn übergeben
+    return _req("GET", "health", timeout=timeout).json() or {"ok": True}
     
 def lhc_raw_chats(params=None) -> Any:
     return _req("GET", "chats", params=params or {"limit": 10}).json()
