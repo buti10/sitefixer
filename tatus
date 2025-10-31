@@ -1,0 +1,21 @@
+[0;1;32m●[0m sitefixer-backend.service - Sitefixer Backend (FastAPI via Gunicorn+Uvicorn)
+     Loaded: loaded (]8;;file://competent-nash.217-154-114-40.plesk.page/etc/systemd/system/sitefixer-backend.service/etc/systemd/system/sitefixer-backend.service]8;;; [0;1;32menabled[0m; preset: [0;1;32menabled[0m)
+     Active: [0;1;32mactive (running)[0m since Fri 2025-10-31 08:24:38 UTC; 1h 21min ago
+   Main PID: 2623500 (gunicorn)
+      Tasks: 2 (limit: 9429)
+     Memory: 82.3M (peak: 147.0M)
+        CPU: 3min 13.598s
+     CGroup: /system.slice/sitefixer-backend.service
+             ├─[0;38;5;245m2623500 /var/www/sitefixer/backend/venv/bin/python3 /var/www/sitefixer/backend/venv/bin/gunicorn -w 1 -b 127.0.0.1:8000 app.wsgi:app[0m
+             └─[0;38;5;245m2623502 /var/www/sitefixer/backend/venv/bin/python3 /var/www/sitefixer/backend/venv/bin/gunicorn -w 1 -b 127.0.0.1:8000 app.wsgi:app[0m
+
+Oct 31 09:46:04 competent-nash.217-154-114-40.plesk.page gunicorn[2623502]: AttributeError: 'int' object has no attribute 'strip'
+Oct 31 09:46:05 competent-nash.217-154-114-40.plesk.page gunicorn[2623502]: comms_chat error: 'int' object has no attribute 'strip'
+Oct 31 09:46:05 competent-nash.217-154-114-40.plesk.page gunicorn[2623502]: Traceback (most recent call last):
+Oct 31 09:46:05 competent-nash.217-154-114-40.plesk.page gunicorn[2623502]:   File "/var/www/sitefixer/backend/modules/comms_chat/routes.py", line 41, in inbox
+Oct 31 09:46:05 competent-nash.217-154-114-40.plesk.page gunicorn[2623502]:     return _ok({"items": lhc_inbox()})
+Oct 31 09:46:05 competent-nash.217-154-114-40.plesk.page gunicorn[2623502]:                          ^^^^^^^^^^^
+Oct 31 09:46:05 competent-nash.217-154-114-40.plesk.page gunicorn[2623502]:   File "/var/www/sitefixer/backend/modules/comms_chat/svc_lhc.py", line 93, in lhc_inbox
+Oct 31 09:46:05 competent-nash.217-154-114-40.plesk.page gunicorn[2623502]:     raw_status = (it.get("status_label") or it.get("status") or "").strip().lower()
+Oct 31 09:46:05 competent-nash.217-154-114-40.plesk.page gunicorn[2623502]:                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Oct 31 09:46:05 competent-nash.217-154-114-40.plesk.page gunicorn[2623502]: AttributeError: 'int' object has no attribute 'strip'

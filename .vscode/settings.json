@@ -1,3 +1,18 @@
 {
-    "chatgpt-helper.model": "gpt-4"
+  "files.eol": "\n",
+  "editor.tabSize": 2,
+  "editor.formatOnSave": true,
+  "python.analysis.typeCheckingMode": "basic",
+  "python.defaultInterpreterPath": "/usr/bin/python3",
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "vue",
+    "typescript",
+    "typescriptreact"
+  ],
+  "vue.features.codeActions.enable": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": true
+  }
 }
