@@ -1,0 +1,16 @@
+{
+  "action_id": "20260109_214107_maintenance_r7AFIl0Q",
+  "fix_id": "maintenance",
+  "ticket_id": 70,
+  "actor_user_id": 1,
+  "actor_name": "Administrator",
+  "created_ts": 1767994867,
+  "wp_root": "/clickandbuilds/Sitefix2Blocksby",
+  "project_root": "/clickandbuilds/Sitefix2Blocksby",
+  "status": "applied",
+  "context": {},
+  "notes": "moved=1",
+  "events": [
+    "moved /clickandbuilds/Sitefix2Blocksby/.maintenance -> /var/www/sitefixer/wp-repair-storage/quarantine/70/20260109_214107_maintenance_r7AFIl0Q/files/aedcadc108__.maintenance"
+  ]
+}

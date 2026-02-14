@@ -1,16 +1,28 @@
-/venv/
-/node_modules/
-/dist/
-/.vite/
-/__pycache__/
-/*.pyc
+# secrets
 .env
-.DS_Store
-/reports/
+*.env
+*.pem
+*.key
+secrets*
+**/config.local.*
+**/settings.local.*
 
-# große Artefakte
-backend-backup-*.tgz
-*.zip
-*.tar
-*.tgz
-reports/
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# node
+node_modules/
+dist/
+.vite/
+
+# logs/cache/uploads
+logs/
+tmp/
+cache/
+storage/
+uploads/
+core-cache/
+.sitefixer/

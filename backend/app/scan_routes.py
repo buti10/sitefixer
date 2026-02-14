@@ -5,9 +5,7 @@ import mysql.connector
 from redis import Redis
 from rq import Queue
 from scan_worker import perform_scan  # worker entrypoint
-from dotenv import load_dotenv
 
-load_dotenv()
 
 bp = Blueprint("scan", __name__, url_prefix="/api/scan")
 redis_conn = Redis(host=os.getenv("REDIS_HOST","localhost"), port=int(os.getenv("REDIS_PORT",6379)))

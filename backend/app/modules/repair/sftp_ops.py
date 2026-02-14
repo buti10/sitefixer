@@ -4,6 +4,7 @@ import posixpath, stat, base64
 from typing import Dict, Any, List, Optional
 from app.models_repair import RepairSession
 from app.extensions import db
+from app.scanner.sftp_adapter import get_client_by_sid as _get
 
 class SFTPUnavailable(Exception): ...
 _get_client = None
@@ -17,6 +18,53 @@ def _client_by_sid(sid: str):
     if not cli:
         raise SFTPUnavailable(f"SFTP session not found: {sid}")
     return cli
+
+def _unwrap_sftp(cli, _depth: int = 0):
+    """
+    Tries hard to get a paramiko-like SFTP client from wrappers/proxies.
+    Returns an object that has listdir_attr/stat/open/rename.
+    """
+    if cli is None:
+        return None
+    if _depth > 3:
+        return cli
+
+    # already usable
+    if hasattr(cli, "listdir_attr") and hasattr(cli, "stat") and hasattr(cli, "open"):
+        return cli
+
+    # try common getter methods
+    for m in ("get_sftp", "get_client", "client", "sftp"):
+        fn = getattr(cli, m, None)
+        if callable(fn):
+            try:
+                inner = fn()
+                if inner and inner is not cli:
+                    inner2 = _unwrap_sftp(inner, _depth + 1)
+                    if inner2 and hasattr(inner2, "listdir_attr"):
+                        return inner2
+            except Exception:
+                pass
+
+    # try common attribute names (including many proxy patterns)
+    candidates = (
+        "sftp", "client", "sftp_client", "_sftp", "_client",
+        "conn", "connection", "_conn", "_connection",
+        "transport", "_transport",
+        "delegate", "_delegate", "wrapped", "_wrapped",
+        "inner", "_inner", "impl", "_impl",
+        "__wrapped__",
+    )
+    for attr in candidates:
+        inner = getattr(cli, attr, None)
+        if inner and inner is not cli:
+            inner2 = _unwrap_sftp(inner, _depth + 1)
+            if inner2 and hasattr(inner2, "listdir_attr"):
+                return inner2
+
+    return cli
+
+
 
 def _ensure_under_root(root: str, path: str) -> str:
     root_n = posixpath.normpath(root or "/")
@@ -54,7 +102,7 @@ def list_dir(session_id: int, path: Optional[str]):
     if not s:
         return {"error": "session not found"}, 404
     target = _ensure_under_root(s.root, path or s.root)
-    cli = _client_by_sid(s.sid)
+    cli = _unwrap_sftp(_client_by_sid(s.sid))
     try:
         attrs = _listdir_with_fallback(cli, target)
         items: List[Dict[str, Any]] = []
@@ -129,3 +177,168 @@ def read_file(session_id: int, path: str, max_bytes: int = 200_000):
         "size_hint": int(getattr(st, "st_size", 0) or 0),
         "mtime": int(getattr(st, "st_mtime", 0) or 0),
     }, 200
+
+
+# ---------- rename / move ----------
+def rename_path(session_id: int, src: str, dst: str):
+    s: RepairSession = db.session.get(RepairSession, session_id)
+    if not s:
+        return {"error": "session not found"}, 404
+
+    src_p = _ensure_under_root(s.root, src or s.root)
+    dst_p = _ensure_under_root(s.root, dst or s.root)
+
+    # get + unwrap client
+    try:
+        raw = _client_by_sid(s.sid)
+        cli = _unwrap_sftp(raw)
+    except SFTPUnavailable as e:
+        return {"error": str(e), "sid": s.sid}, 500
+    except Exception as e:
+        return {"error": f"client resolve failed: {e}", "sid": s.sid}, 500
+
+    if not cli:
+        return {"error": "SFTP client unavailable", "sid": s.sid}, 500
+
+    # method capability check (after unwrap)
+    rename_fn = getattr(cli, "rename", None)
+    posix_fn = getattr(cli, "posix_rename", None)
+    has_rename = callable(rename_fn)
+    has_posix = callable(posix_fn)
+
+    # If still a proxy, emit debug to logs to discover where the real client is
+    if not (has_rename or has_posix):
+        try:
+            hint_attrs = [
+                a for a in dir(cli)
+                if any(k in a.lower() for k in ("sftp", "client", "conn", "wrap", "inner", "delegate", "impl", "proxy"))
+            ]
+            current_app.logger.warning(
+                "rename_path: unresolved client type=%s sid=%s hint_attrs=%s",
+                type(cli).__name__,
+                s.sid,
+                hint_attrs[:80],
+            )
+        except Exception:
+            pass
+
+        return {
+            "error": f"{type(cli).__name__} has no rename/posix_rename",
+            "sid": s.sid,
+        }, 500
+
+    try:
+        # Prefer rename (more widely supported), fallback to posix_rename
+        if has_rename:
+            rename_fn(src_p, dst_p)
+        else:
+            posix_fn(src_p, dst_p)
+
+        return {"ok": True, "src": src_p, "dst": dst_p}, 200
+
+    except FileNotFoundError:
+        return {"error": "not found", "src": src_p, "dst": dst_p}, 404
+    except PermissionError:
+        return {"error": "permission denied", "src": src_p, "dst": dst_p}, 403
+    except OSError as e:
+        return {"error": str(e), "src": src_p, "dst": dst_p}, 500
+    except Exception as e:
+        return {"error": str(e), "src": src_p, "dst": dst_p}, 500
+
+
+
+
+# ---------- mkdir ----------
+def mkdir_path(session_id: int, path: str):
+    s: RepairSession = db.session.get(RepairSession, session_id)
+    if not s:
+        return {"error": "session not found"}, 404
+
+    p = _ensure_under_root(s.root, path or s.root)
+    cli = _client_by_sid(s.sid)
+    try:
+        cli.mkdir(p)
+        return {"ok": True, "path": p}, 200
+    except FileExistsError:
+        return {"ok": True, "path": p}, 200
+    except Exception as e:
+        return {"error": str(e), "path": p}, 500
+
+
+# ---------- delete file ----------
+def delete_file(session_id: int, path: str):
+    s: RepairSession = db.session.get(RepairSession, session_id)
+    if not s:
+        return {"error": "session not found"}, 404
+
+    p = _ensure_under_root(s.root, path or s.root)
+    cli = _client_by_sid(s.sid)
+    try:
+        st = cli.stat(p)
+        if stat.S_ISDIR(st.st_mode):
+            return {"error": "is directory", "path": p}, 400
+        cli.remove(p)
+        return {"ok": True, "path": p}, 200
+    except FileNotFoundError:
+        return {"error": "not found", "path": p}, 404
+    except Exception as e:
+        return {"error": str(e), "path": p}, 500
+
+
+# ---------- delete directory (must be empty) ----------
+def rmdir_path(session_id: int, path: str):
+    s: RepairSession = db.session.get(RepairSession, session_id)
+    if not s:
+        return {"error": "session not found"}, 404
+
+    p = _ensure_under_root(s.root, path or s.root)
+    cli = _client_by_sid(s.sid)
+    try:
+        cli.rmdir(p)
+        return {"ok": True, "path": p}, 200
+    except FileNotFoundError:
+        return {"error": "not found", "path": p}, 404
+    except Exception as e:
+        return {"error": str(e), "path": p}, 500
+
+
+# ---------- chmod ----------
+def chmod_path(session_id: int, path: str, mode: int):
+    s: RepairSession = db.session.get(RepairSession, session_id)
+    if not s:
+        return {"error": "session not found"}, 404
+
+    p = _ensure_under_root(s.root, path or s.root)
+    cli = _client_by_sid(s.sid)
+    try:
+        cli.chmod(p, mode)
+        return {"ok": True, "path": p, "mode": oct(mode)}, 200
+    except FileNotFoundError:
+        return {"error": "not found", "path": p}, 404
+    except Exception as e:
+        return {"error": str(e), "path": p}, 500
+
+
+# ---------- write file ----------
+def write_file(session_id: int, path: str, text: str | None = None, b64: str | None = None):
+    s: RepairSession = db.session.get(RepairSession, session_id)
+    if not s:
+        return {"error": "session not found"}, 404
+
+    p = _ensure_under_root(s.root, path or s.root)
+    cli = _client_by_sid(s.sid)
+
+    try:
+        data: bytes
+        if b64 is not None:
+            data = base64.b64decode(b64.encode("ascii"))
+        else:
+            data = (text or "").encode("utf-8")
+
+        # Paramiko: open(path, "wb")
+        with cli.open(p, "wb") as f:
+            f.write(data)
+
+        return {"ok": True, "path": p, "bytes": len(data)}, 200
+    except Exception as e:
+        return {"error": str(e), "path": p}, 500

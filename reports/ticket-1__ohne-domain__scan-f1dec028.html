@@ -1,0 +1,1074 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <title>ohne Domain – Malware-Report</title>
+  <style>
+    @page { size: A4 landscape; margin: 14mm; }         /* Querformat PDF */
+    :root{
+      --fg:#111; --muted:#6b7280; --line:#e5e7eb;
+      --ok:#16a34a; --warn:#f59e0b; --bad:#ef4444; --chip:#f3f4f6;
+      --chipfg:#111; --bgcode:#0b1220; --fgcode:#e5e7eb; --hl:#fde68a;
+      --badge:#eef2ff; --badgefg:#3730a3;
+    }
+    *{ box-sizing:border-box }
+    body{ font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial; color:var(--fg); }
+    h1{ font-size:24px; margin:0 0 6px; }
+    h2{ font-size:18px; margin:18px 0 10px; }
+    small, .muted{ color:var(--muted); }
+    .row{ display:flex; gap:20px; align-items:center; }
+    .logo{ height:28px }
+    .kvs{ margin-top:4px }
+    .kvs span{ margin-right:12px }
+    .chip{ display:inline-block; background:var(--chip); color:var(--chipfg);
+           padding:6px 10px; border-radius:10px; font-weight:600; }
+    .b{ font-weight:700 }
+    .badge{ display:inline-block; padding:4px 8px; border-radius:8px;
+            background:var(--badge); color:var(--badgefg); font-weight:600 }
+    .bad   { background:#fee2e2; color:#991b1b }
+    .ok    { background:#dcfce7; color:#14532d }
+    .warn  { background:#fef3c7; color:#92400e }
+
+    .box{ border:1px solid var(--line); border-radius:14px; padding:14px; margin:12px 0 }
+    table{ width:100%; border-collapse:collapse }
+    th,td{ border-top:1px solid var(--line); padding:10px 10px; text-align:left; vertical-align:top }
+    th{ background:#fafafa; font-size:13px }
+    td.path{ width:40%; word-break:break-all }
+    td.line{ width:60px; text-align:center; color:var(--muted) }
+    td.sev  { width:120px }
+    td.kind { width:180px }
+    pre.snip{
+      background:var(--bgcode); color:var(--fgcode);
+      border-radius:10px; padding:10px 12px; margin:8px 0 0;
+      font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+      white-space:pre-wrap; word-break:break-word; max-height:140px; overflow:auto;
+    }
+    mark{ background:var(--hl); padding:0 2px }
+  </style>
+</head>
+<body>
+
+  <div class="row">
+    
+    <h1>Malware-Report</h1>
+  </div>
+
+  <div class="kvs muted">
+    <span><span class="b">Ticket</span> #1 – ohne Domain</span>
+    <span>•</span>
+    <span>Scan <code>f1dec028</code></span>
+  </div>
+  <div class="kvs muted">
+    <span>Kunde: —</span>
+    <span>•</span>
+    <span>CMS: —</span>
+    <span>•</span>
+    <span>Hoster: —</span>
+    <span>•</span>
+    <span>Erzeugt: 2025-10-12 19:02:14</span>
+  </div>
+
+  <h2>Zusammenfassung</h2>
+  <div class="box">
+    <span class="chip">Total: <span class="b">135</span></span>
+    <span class="chip ok">Clean: <span class="b">124</span></span>
+    <span class="chip warn">Suspicious: <span class="b">0</span></span>
+    <span class="chip bad">Malicious: <span class="b">11</span></span>
+  </div>
+
+  <h2>Findings</h2>
+  <div class="box">
+    <table>
+      <thead>
+        <tr>
+          <th>Datei</th>
+          <th>Art</th>
+          <th>Schwere</th>
+          <th>Zeile</th>
+          <th style="width:40%">Ausschnitt</th>
+        </tr>
+      </thead>
+      <tbody>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/dist/edit-rtl.css
+            <div class="muted" style="font-size:12px">sha256: d20cd038bb7ca80adb6a1d514789de89476398d5456278930e5a3fcba126b33b</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">2</td>
+          
+            <td>
+              
+                <pre class="snip">.CodeMirror{background-color:#fff;border:1px solid #dfdfdf;border-radius:3px;height:auto!important}.CodeMirror-code{outline:none}.CodeMirror-focused .cm-matchhighlight{color:#fff!important;outline:1px solid green}.CodeMirror-sizer:after,.CodeMirror-sizer:before{color:#bbb;display:block}.CodeMirror-sizer:before{content:&#34;&#34;;padding-bottom:5px}.cm-s-rubyblue .CodeMirror-cursor{border-right:1px solid # …</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/dist/edit.css
+            <div class="muted" style="font-size:12px">sha256: e8b0b37af5d46bb38064410d4a728d7ca53e7eaa7011a123e128bbd2ed6b070e</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">2</td>
+          
+            <td>
+              
+                <pre class="snip">.CodeMirror{background-color:#fff;border:1px solid #dfdfdf;border-radius:3px;height:auto!important}.CodeMirror-code{outline:none}.CodeMirror-focused .cm-matchhighlight{color:#fff!important;outline:1px solid green}.CodeMirror-sizer:after,.CodeMirror-sizer:before{color:#bbb;display:block}.CodeMirror-sizer:before{content:&#34;&#34;;padding-bottom:5px}.cm-s-rubyblue .CodeMirror-cursor{border-left:1px solid #f …</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/dist/edit.js
+            <div class="muted" style="font-size:12px">sha256: bfea742d6ee6b2d091e7fd560bb3d6e65d4c64a4d531a91c7003ed1f8d7a409e</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">2</td>
+          
+            <td>
+              
+                <pre class="snip">(self.webpackChunkcode_snippets=self.webpackChunkcode_snippets||[]).push([[8739],{2374:(e,t,n)=&gt;{&#34;use strict&#34;;var r={};n.r(r),n.d(r,{hasBrowserEnv:()=&gt;Ee,hasStandardBrowserEnv:()=&gt;ke,hasStandardBrowserWebWorkerEnv:()=&gt;Ce,navigator:()=&gt;Pe,origin:()=&gt;Re});var o=n(1609),i=n(5338),s=n(3453),a=n(6942),c=n.n(a),l=function(){return window.pagenow.endsWith(&#34;-network&#34;)},u=function(){return null!==/mac/i.ex …</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/dist/edit.js
+            <div class="muted" style="font-size:12px">sha256: bfea742d6ee6b2d091e7fd560bb3d6e65d4c64a4d531a91c7003ed1f8d7a409e</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">2</td>
+          
+            <td>
+              
+                <pre class="snip">(self.webpackChunkcode_snippets=self.webpackChunkcode_snippets||[]).push([[8739],{2374:(e,t,n)=&gt;{&#34;use strict&#34;;var r={};n.r(r),n.d(r,{hasBrowserEnv:()=&gt;Ee,hasStandardBrowserEnv:()=&gt;ke,hasStandardBrowserWebWorkerEnv:()=&gt;Ce,navigator:()=&gt;Pe,origin:()=&gt;Re});var o=n(1609),i=n(5338),s=n(3453),a=n(6942),c=n.n(a),l=function(){return window.pagenow.endsWith(&#34;-network&#34;)},u=function(){return null!==/mac/i.ex …</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/dist/edit.js
+            <div class="muted" style="font-size:12px">sha256: bfea742d6ee6b2d091e7fd560bb3d6e65d4c64a4d531a91c7003ed1f8d7a409e</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">2</td>
+          
+            <td>
+              
+                <pre class="snip">(self.webpackChunkcode_snippets=self.webpackChunkcode_snippets||[]).push([[8739],{2374:(e,t,n)=&gt;{&#34;use strict&#34;;var r={};n.r(r),n.d(r,{hasBrowserEnv:()=&gt;Ee,hasStandardBrowserEnv:()=&gt;ke,hasStandardBrowserWebWorkerEnv:()=&gt;Ce,navigator:()=&gt;Pe,origin:()=&gt;Re});var o=n(1609),i=n(5338),s=n(3453),a=n(6942),c=n.n(a),l=function(){return window.pagenow.endsWith(&#34;-network&#34;)},u=function(){return null!==/mac/i.ex …</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/dist/edit.js
+            <div class="muted" style="font-size:12px">sha256: bfea742d6ee6b2d091e7fd560bb3d6e65d4c64a4d531a91c7003ed1f8d7a409e</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">2</td>
+          
+            <td>
+              
+                <pre class="snip">(self.webpackChunkcode_snippets=self.webpackChunkcode_snippets||[]).push([[8739],{2374:(e,t,n)=&gt;{&#34;use strict&#34;;var r={};n.r(r),n.d(r,{hasBrowserEnv:()=&gt;Ee,hasStandardBrowserEnv:()=&gt;ke,hasStandardBrowserWebWorkerEnv:()=&gt;Ce,navigator:()=&gt;Pe,origin:()=&gt;Re});var o=n(1609),i=n(5338),s=n(3453),a=n(6942),c=n.n(a),l=function(){return window.pagenow.endsWith(&#34;-network&#34;)},u=function(){return null!==/mac/i.ex …</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/dist/edit.js
+            <div class="muted" style="font-size:12px">sha256: bfea742d6ee6b2d091e7fd560bb3d6e65d4c64a4d531a91c7003ed1f8d7a409e</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">2</td>
+          
+            <td>
+              
+                <pre class="snip">(self.webpackChunkcode_snippets=self.webpackChunkcode_snippets||[]).push([[8739],{2374:(e,t,n)=&gt;{&#34;use strict&#34;;var r={};n.r(r),n.d(r,{hasBrowserEnv:()=&gt;Ee,hasStandardBrowserEnv:()=&gt;ke,hasStandardBrowserWebWorkerEnv:()=&gt;Ce,navigator:()=&gt;Pe,origin:()=&gt;Re});var o=n(1609),i=n(5338),s=n(3453),a=n(6942),c=n.n(a),l=function(){return window.pagenow.endsWith(&#34;-network&#34;)},u=function(){return null!==/mac/i.ex …</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/dist/edit.js
+            <div class="muted" style="font-size:12px">sha256: bfea742d6ee6b2d091e7fd560bb3d6e65d4c64a4d531a91c7003ed1f8d7a409e</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">2</td>
+          
+            <td>
+              
+                <pre class="snip">(self.webpackChunkcode_snippets=self.webpackChunkcode_snippets||[]).push([[8739],{2374:(e,t,n)=&gt;{&#34;use strict&#34;;var r={};n.r(r),n.d(r,{hasBrowserEnv:()=&gt;Ee,hasStandardBrowserEnv:()=&gt;ke,hasStandardBrowserWebWorkerEnv:()=&gt;Ce,navigator:()=&gt;Pe,origin:()=&gt;Re});var o=n(1609),i=n(5338),s=n(3453),a=n(6942),c=n.n(a),l=function(){return window.pagenow.endsWith(&#34;-network&#34;)},u=function(){return null!==/mac/i.ex …</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/dist/edit.js
+            <div class="muted" style="font-size:12px">sha256: bfea742d6ee6b2d091e7fd560bb3d6e65d4c64a4d531a91c7003ed1f8d7a409e</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">2</td>
+          
+            <td>
+              
+                <pre class="snip">(self.webpackChunkcode_snippets=self.webpackChunkcode_snippets||[]).push([[8739],{2374:(e,t,n)=&gt;{&#34;use strict&#34;;var r={};n.r(r),n.d(r,{hasBrowserEnv:()=&gt;Ee,hasStandardBrowserEnv:()=&gt;ke,hasStandardBrowserWebWorkerEnv:()=&gt;Ce,navigator:()=&gt;Pe,origin:()=&gt;Re});var o=n(1609),i=n(5338),s=n(3453),a=n(6942),c=n.n(a),l=function(){return window.pagenow.endsWith(&#34;-network&#34;)},u=function(){return null!==/mac/i.ex …</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/dist/editor.js
+            <div class="muted" style="font-size:12px">sha256: 52390234e87da2583a0ee4b790e596fbc175238886ae68a019c54f31883f143c</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">2</td>
+          
+            <td>
+              
+                <pre class="snip">(()=&gt;{var t,e={2949:(t,e,i)=&gt;{&#34;use strict&#34;;const s=window.wp.CodeMirror;var n=i.n(s),r=i(3453),h=i(816);function o(t,e){for(var i=0;i&lt;e.length;i++){var s=e[i];s.enumerable=s.enumerable||!1,s.configurable=!0,&#34;value&#34;in s&amp;&amp;(s.writable=!0),Object.defineProperty(t,(0,h.A)(s.key),s)}}var a=i(4776);function _(t,e){var i=&#34;undefined&#34;!=typeof Symbol&amp;&amp;t[Symbol.iterator]||t[&#34;@@iterator&#34;];if(!i){if(Array.isArr …</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/dist/editor.js
+            <div class="muted" style="font-size:12px">sha256: 52390234e87da2583a0ee4b790e596fbc175238886ae68a019c54f31883f143c</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">2</td>
+          
+            <td>
+              
+                <pre class="snip">(()=&gt;{var t,e={2949:(t,e,i)=&gt;{&#34;use strict&#34;;const s=window.wp.CodeMirror;var n=i.n(s),r=i(3453),h=i(816);function o(t,e){for(var i=0;i&lt;e.length;i++){var s=e[i];s.enumerable=s.enumerable||!1,s.configurable=!0,&#34;value&#34;in s&amp;&amp;(s.writable=!0),Object.defineProperty(t,(0,h.A)(s.key),s)}}var a=i(4776);function _(t,e){var i=&#34;undefined&#34;!=typeof Symbol&amp;&amp;t[Symbol.iterator]||t[&#34;@@iterator&#34;];if(!i){if(Array.isArr …</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/dist/editor.js
+            <div class="muted" style="font-size:12px">sha256: 52390234e87da2583a0ee4b790e596fbc175238886ae68a019c54f31883f143c</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">2</td>
+          
+            <td>
+              
+                <pre class="snip">(()=&gt;{var t,e={2949:(t,e,i)=&gt;{&#34;use strict&#34;;const s=window.wp.CodeMirror;var n=i.n(s),r=i(3453),h=i(816);function o(t,e){for(var i=0;i&lt;e.length;i++){var s=e[i];s.enumerable=s.enumerable||!1,s.configurable=!0,&#34;value&#34;in s&amp;&amp;(s.writable=!0),Object.defineProperty(t,(0,h.A)(s.key),s)}}var a=i(4776);function _(t,e){var i=&#34;undefined&#34;!=typeof Symbol&amp;&amp;t[Symbol.iterator]||t[&#34;@@iterator&#34;];if(!i){if(Array.isArr …</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/dist/editor.js
+            <div class="muted" style="font-size:12px">sha256: 52390234e87da2583a0ee4b790e596fbc175238886ae68a019c54f31883f143c</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">2</td>
+          
+            <td>
+              
+                <pre class="snip">(()=&gt;{var t,e={2949:(t,e,i)=&gt;{&#34;use strict&#34;;const s=window.wp.CodeMirror;var n=i.n(s),r=i(3453),h=i(816);function o(t,e){for(var i=0;i&lt;e.length;i++){var s=e[i];s.enumerable=s.enumerable||!1,s.configurable=!0,&#34;value&#34;in s&amp;&amp;(s.writable=!0),Object.defineProperty(t,(0,h.A)(s.key),s)}}var a=i(4776);function _(t,e){var i=&#34;undefined&#34;!=typeof Symbol&amp;&amp;t[Symbol.iterator]||t[&#34;@@iterator&#34;];if(!i){if(Array.isArr …</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/dist/editor.js
+            <div class="muted" style="font-size:12px">sha256: 52390234e87da2583a0ee4b790e596fbc175238886ae68a019c54f31883f143c</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">2</td>
+          
+            <td>
+              
+                <pre class="snip">(()=&gt;{var t,e={2949:(t,e,i)=&gt;{&#34;use strict&#34;;const s=window.wp.CodeMirror;var n=i.n(s),r=i(3453),h=i(816);function o(t,e){for(var i=0;i&lt;e.length;i++){var s=e[i];s.enumerable=s.enumerable||!1,s.configurable=!0,&#34;value&#34;in s&amp;&amp;(s.writable=!0),Object.defineProperty(t,(0,h.A)(s.key),s)}}var a=i(4776);function _(t,e){var i=&#34;undefined&#34;!=typeof Symbol&amp;&amp;t[Symbol.iterator]||t[&#34;@@iterator&#34;];if(!i){if(Array.isArr …</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/dist/manage.js
+            <div class="muted" style="font-size:12px">sha256: 6941db256b772c164f4ae42116a0c31b23f34fa483698babce0102d8429731e7</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">2</td>
+          
+            <td>
+              
+                <pre class="snip">(()=&gt;{var e={5624:()=&gt;{Prism.languages.clike={comment:[{pattern:/(^|[^\\])\/\*[\s\S]*?(?:\*\/|$)/,lookbehind:!0,greedy:!0},{pattern:/(^|[^\\:])\/\/.*/,lookbehind:!0,greedy:!0}],string:{pattern:/([&#34;&#39;])(?:\\(?:\r\n|[\s\S])|(?!\1)[^\\\r\n])*\1/,greedy:!0},&#34;class-name&#34;:{pattern:/(\b(?:class|extends|implements|instanceof|interface|new|trait)\s+|\bcatch\s+\()[\w.\\]+/i,lookbehind:!0,inside:{punctuation: …</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/dist/manage.js
+            <div class="muted" style="font-size:12px">sha256: 6941db256b772c164f4ae42116a0c31b23f34fa483698babce0102d8429731e7</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">2</td>
+          
+            <td>
+              
+                <pre class="snip">(()=&gt;{var e={5624:()=&gt;{Prism.languages.clike={comment:[{pattern:/(^|[^\\])\/\*[\s\S]*?(?:\*\/|$)/,lookbehind:!0,greedy:!0},{pattern:/(^|[^\\:])\/\/.*/,lookbehind:!0,greedy:!0}],string:{pattern:/([&#34;&#39;])(?:\\(?:\r\n|[\s\S])|(?!\1)[^\\\r\n])*\1/,greedy:!0},&#34;class-name&#34;:{pattern:/(\b(?:class|extends|implements|instanceof|interface|new|trait)\s+|\bcatch\s+\()[\w.\\]+/i,lookbehind:!0,inside:{punctuation: …</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/dist/manage.js
+            <div class="muted" style="font-size:12px">sha256: 6941db256b772c164f4ae42116a0c31b23f34fa483698babce0102d8429731e7</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">2</td>
+          
+            <td>
+              
+                <pre class="snip">(()=&gt;{var e={5624:()=&gt;{Prism.languages.clike={comment:[{pattern:/(^|[^\\])\/\*[\s\S]*?(?:\*\/|$)/,lookbehind:!0,greedy:!0},{pattern:/(^|[^\\:])\/\/.*/,lookbehind:!0,greedy:!0}],string:{pattern:/([&#34;&#39;])(?:\\(?:\r\n|[\s\S])|(?!\1)[^\\\r\n])*\1/,greedy:!0},&#34;class-name&#34;:{pattern:/(\b(?:class|extends|implements|instanceof|interface|new|trait)\s+|\bcatch\s+\()[\w.\\]+/i,lookbehind:!0,inside:{punctuation: …</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/dist/manage.js
+            <div class="muted" style="font-size:12px">sha256: 6941db256b772c164f4ae42116a0c31b23f34fa483698babce0102d8429731e7</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">2</td>
+          
+            <td>
+              
+                <pre class="snip">(()=&gt;{var e={5624:()=&gt;{Prism.languages.clike={comment:[{pattern:/(^|[^\\])\/\*[\s\S]*?(?:\*\/|$)/,lookbehind:!0,greedy:!0},{pattern:/(^|[^\\:])\/\/.*/,lookbehind:!0,greedy:!0}],string:{pattern:/([&#34;&#39;])(?:\\(?:\r\n|[\s\S])|(?!\1)[^\\\r\n])*\1/,greedy:!0},&#34;class-name&#34;:{pattern:/(\b(?:class|extends|implements|instanceof|interface|new|trait)\s+|\bcatch\s+\()[\w.\\]+/i,lookbehind:!0,inside:{punctuation: …</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/dist/manage.js
+            <div class="muted" style="font-size:12px">sha256: 6941db256b772c164f4ae42116a0c31b23f34fa483698babce0102d8429731e7</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">2</td>
+          
+            <td>
+              
+                <pre class="snip">(()=&gt;{var e={5624:()=&gt;{Prism.languages.clike={comment:[{pattern:/(^|[^\\])\/\*[\s\S]*?(?:\*\/|$)/,lookbehind:!0,greedy:!0},{pattern:/(^|[^\\:])\/\/.*/,lookbehind:!0,greedy:!0}],string:{pattern:/([&#34;&#39;])(?:\\(?:\r\n|[\s\S])|(?!\1)[^\\\r\n])*\1/,greedy:!0},&#34;class-name&#34;:{pattern:/(\b(?:class|extends|implements|instanceof|interface|new|trait)\s+|\bcatch\s+\()[\w.\\]+/i,lookbehind:!0,inside:{punctuation: …</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/dist/manage.js
+            <div class="muted" style="font-size:12px">sha256: 6941db256b772c164f4ae42116a0c31b23f34fa483698babce0102d8429731e7</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">2</td>
+          
+            <td>
+              
+                <pre class="snip">(()=&gt;{var e={5624:()=&gt;{Prism.languages.clike={comment:[{pattern:/(^|[^\\])\/\*[\s\S]*?(?:\*\/|$)/,lookbehind:!0,greedy:!0},{pattern:/(^|[^\\:])\/\/.*/,lookbehind:!0,greedy:!0}],string:{pattern:/([&#34;&#39;])(?:\\(?:\r\n|[\s\S])|(?!\1)[^\\\r\n])*\1/,greedy:!0},&#34;class-name&#34;:{pattern:/(\b(?:class|extends|implements|instanceof|interface|new|trait)\s+|\bcatch\s+\()[\w.\\]+/i,lookbehind:!0,inside:{punctuation: …</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/dist/manage.js
+            <div class="muted" style="font-size:12px">sha256: 6941db256b772c164f4ae42116a0c31b23f34fa483698babce0102d8429731e7</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">2</td>
+          
+            <td>
+              
+                <pre class="snip">(()=&gt;{var e={5624:()=&gt;{Prism.languages.clike={comment:[{pattern:/(^|[^\\])\/\*[\s\S]*?(?:\*\/|$)/,lookbehind:!0,greedy:!0},{pattern:/(^|[^\\:])\/\/.*/,lookbehind:!0,greedy:!0}],string:{pattern:/([&#34;&#39;])(?:\\(?:\r\n|[\s\S])|(?!\1)[^\\\r\n])*\1/,greedy:!0},&#34;class-name&#34;:{pattern:/(\b(?:class|extends|implements|instanceof|interface|new|trait)\s+|\bcatch\s+\()[\w.\\]+/i,lookbehind:!0,inside:{punctuation: …</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/dist/manage.js
+            <div class="muted" style="font-size:12px">sha256: 6941db256b772c164f4ae42116a0c31b23f34fa483698babce0102d8429731e7</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">2</td>
+          
+            <td>
+              
+                <pre class="snip">(()=&gt;{var e={5624:()=&gt;{Prism.languages.clike={comment:[{pattern:/(^|[^\\])\/\*[\s\S]*?(?:\*\/|$)/,lookbehind:!0,greedy:!0},{pattern:/(^|[^\\:])\/\/.*/,lookbehind:!0,greedy:!0}],string:{pattern:/([&#34;&#39;])(?:\\(?:\r\n|[\s\S])|(?!\1)[^\\\r\n])*\1/,greedy:!0},&#34;class-name&#34;:{pattern:/(\b(?:class|extends|implements|instanceof|interface|new|trait)\s+|\bcatch\s+\()[\w.\\]+/i,lookbehind:!0,inside:{punctuation: …</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/dist/manage.js
+            <div class="muted" style="font-size:12px">sha256: 6941db256b772c164f4ae42116a0c31b23f34fa483698babce0102d8429731e7</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">2</td>
+          
+            <td>
+              
+                <pre class="snip">(()=&gt;{var e={5624:()=&gt;{Prism.languages.clike={comment:[{pattern:/(^|[^\\])\/\*[\s\S]*?(?:\*\/|$)/,lookbehind:!0,greedy:!0},{pattern:/(^|[^\\:])\/\/.*/,lookbehind:!0,greedy:!0}],string:{pattern:/([&#34;&#39;])(?:\\(?:\r\n|[\s\S])|(?!\1)[^\\\r\n])*\1/,greedy:!0},&#34;class-name&#34;:{pattern:/(\b(?:class|extends|implements|instanceof|interface|new|trait)\s+|\bcatch\s+\()[\w.\\]+/i,lookbehind:!0,inside:{punctuation: …</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/dist/prism.js
+            <div class="muted" style="font-size:12px">sha256: e5c5867c8ea376a0332ea4c11280639d89c2035893d0e9b326f4f92f430d1766</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">2</td>
+          
+            <td>
+              
+                <pre class="snip">(()=&gt;{var e={5624:()=&gt;{Prism.languages.clike={comment:[{pattern:/(^|[^\\])\/\*[\s\S]*?(?:\*\/|$)/,lookbehind:!0,greedy:!0},{pattern:/(^|[^\\:])\/\/.*/,lookbehind:!0,greedy:!0}],string:{pattern:/([&#34;&#39;])(?:\\(?:\r\n|[\s\S])|(?!\1)[^\\\r\n])*\1/,greedy:!0},&#34;class-name&#34;:{pattern:/(\b(?:class|extends|implements|instanceof|interface|new|trait)\s+|\bcatch\s+\()[\w.\\]+/i,lookbehind:!0,inside:{punctuation: …</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/dist/prism.js
+            <div class="muted" style="font-size:12px">sha256: e5c5867c8ea376a0332ea4c11280639d89c2035893d0e9b326f4f92f430d1766</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">2</td>
+          
+            <td>
+              
+                <pre class="snip">(()=&gt;{var e={5624:()=&gt;{Prism.languages.clike={comment:[{pattern:/(^|[^\\])\/\*[\s\S]*?(?:\*\/|$)/,lookbehind:!0,greedy:!0},{pattern:/(^|[^\\:])\/\/.*/,lookbehind:!0,greedy:!0}],string:{pattern:/([&#34;&#39;])(?:\\(?:\r\n|[\s\S])|(?!\1)[^\\\r\n])*\1/,greedy:!0},&#34;class-name&#34;:{pattern:/(\b(?:class|extends|implements|instanceof|interface|new|trait)\s+|\bcatch\s+\()[\w.\\]+/i,lookbehind:!0,inside:{punctuation: …</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/dist/prism.js
+            <div class="muted" style="font-size:12px">sha256: e5c5867c8ea376a0332ea4c11280639d89c2035893d0e9b326f4f92f430d1766</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">2</td>
+          
+            <td>
+              
+                <pre class="snip">(()=&gt;{var e={5624:()=&gt;{Prism.languages.clike={comment:[{pattern:/(^|[^\\])\/\*[\s\S]*?(?:\*\/|$)/,lookbehind:!0,greedy:!0},{pattern:/(^|[^\\:])\/\/.*/,lookbehind:!0,greedy:!0}],string:{pattern:/([&#34;&#39;])(?:\\(?:\r\n|[\s\S])|(?!\1)[^\\\r\n])*\1/,greedy:!0},&#34;class-name&#34;:{pattern:/(\b(?:class|extends|implements|instanceof|interface|new|trait)\s+|\bcatch\s+\()[\w.\\]+/i,lookbehind:!0,inside:{punctuation: …</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/dist/prism.js
+            <div class="muted" style="font-size:12px">sha256: e5c5867c8ea376a0332ea4c11280639d89c2035893d0e9b326f4f92f430d1766</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">2</td>
+          
+            <td>
+              
+                <pre class="snip">(()=&gt;{var e={5624:()=&gt;{Prism.languages.clike={comment:[{pattern:/(^|[^\\])\/\*[\s\S]*?(?:\*\/|$)/,lookbehind:!0,greedy:!0},{pattern:/(^|[^\\:])\/\/.*/,lookbehind:!0,greedy:!0}],string:{pattern:/([&#34;&#39;])(?:\\(?:\r\n|[\s\S])|(?!\1)[^\\\r\n])*\1/,greedy:!0},&#34;class-name&#34;:{pattern:/(\b(?:class|extends|implements|instanceof|interface|new|trait)\s+|\bcatch\s+\()[\w.\\]+/i,lookbehind:!0,inside:{punctuation: …</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/dist/prism.js
+            <div class="muted" style="font-size:12px">sha256: e5c5867c8ea376a0332ea4c11280639d89c2035893d0e9b326f4f92f430d1766</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">2</td>
+          
+            <td>
+              
+                <pre class="snip">(()=&gt;{var e={5624:()=&gt;{Prism.languages.clike={comment:[{pattern:/(^|[^\\])\/\*[\s\S]*?(?:\*\/|$)/,lookbehind:!0,greedy:!0},{pattern:/(^|[^\\:])\/\/.*/,lookbehind:!0,greedy:!0}],string:{pattern:/([&#34;&#39;])(?:\\(?:\r\n|[\s\S])|(?!\1)[^\\\r\n])*\1/,greedy:!0},&#34;class-name&#34;:{pattern:/(\b(?:class|extends|implements|instanceof|interface|new|trait)\s+|\bcatch\s+\()[\w.\\]+/i,lookbehind:!0,inside:{punctuation: …</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/dist/prism.js
+            <div class="muted" style="font-size:12px">sha256: e5c5867c8ea376a0332ea4c11280639d89c2035893d0e9b326f4f92f430d1766</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">2</td>
+          
+            <td>
+              
+                <pre class="snip">(()=&gt;{var e={5624:()=&gt;{Prism.languages.clike={comment:[{pattern:/(^|[^\\])\/\*[\s\S]*?(?:\*\/|$)/,lookbehind:!0,greedy:!0},{pattern:/(^|[^\\:])\/\/.*/,lookbehind:!0,greedy:!0}],string:{pattern:/([&#34;&#39;])(?:\\(?:\r\n|[\s\S])|(?!\1)[^\\\r\n])*\1/,greedy:!0},&#34;class-name&#34;:{pattern:/(\b(?:class|extends|implements|instanceof|interface|new|trait)\s+|\bcatch\s+\()[\w.\\]+/i,lookbehind:!0,inside:{punctuation: …</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/dist/settings.js
+            <div class="muted" style="font-size:12px">sha256: 850828c41dd712109ab5932afac22c4bd485084a9583147ead83dcff8c4fa53b</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">1</td>
+          
+            <td>
+              
+                <pre class="snip">&#34;use strict&#34;;(self.webpackChunkcode_snippets=self.webpackChunkcode_snippets||[]).push([[6472],{6658:(e,t,r)=&gt;{var n=r(2284),o=r(5501),i=r(3662);function a(e,t){(null==t||t&gt;e.length)&amp;&amp;(t=e.length);for(var r=0,n=Array(t);r&lt;t;r++)n[r]=e[r];return n}function c(){c=function(e,t){return new r(e,void 0,t)};var e=RegExp.prototype,t=new WeakMap;function r(e,n,o){var a=RegExp(e,n);return t.set(a,o||t.get(e) …</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/dist/settings.js
+            <div class="muted" style="font-size:12px">sha256: 850828c41dd712109ab5932afac22c4bd485084a9583147ead83dcff8c4fa53b</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">1</td>
+          
+            <td>
+              
+                <pre class="snip">&#34;use strict&#34;;(self.webpackChunkcode_snippets=self.webpackChunkcode_snippets||[]).push([[6472],{6658:(e,t,r)=&gt;{var n=r(2284),o=r(5501),i=r(3662);function a(e,t){(null==t||t&gt;e.length)&amp;&amp;(t=e.length);for(var r=0,n=Array(t);r&lt;t;r++)n[r]=e[r];return n}function c(){c=function(e,t){return new r(e,void 0,t)};var e=RegExp.prototype,t=new WeakMap;function r(e,n,o){var a=RegExp(e,n);return t.set(a,o||t.get(e) …</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/license.txt
+            <div class="muted" style="font-size:12px">sha256: d0b12eaa85c0808e5692aef023fc99cec91d43077d7a02ead36b587dfd70a30b</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">182</td>
+          
+            <td>
+              
+                <pre class="snip">operating system on which the executable runs, unless that component</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/license.txt
+            <div class="muted" style="font-size:12px">sha256: d0b12eaa85c0808e5692aef023fc99cec91d43077d7a02ead36b587dfd70a30b</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">237</td>
+          
+            <td>
+              
+                <pre class="snip">integrity of the free software distribution system, which is</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/license.txt
+            <div class="muted" style="font-size:12px">sha256: d0b12eaa85c0808e5692aef023fc99cec91d43077d7a02ead36b587dfd70a30b</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">240</td>
+          
+            <td>
+              
+                <pre class="snip">through that system in reliance on consistent application of that</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/license.txt
+            <div class="muted" style="font-size:12px">sha256: d0b12eaa85c0808e5692aef023fc99cec91d43077d7a02ead36b587dfd70a30b</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">241</td>
+          
+            <td>
+              
+                <pre class="snip">system; it is up to the author/donor to decide if he or she is willing</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/license.txt
+            <div class="muted" style="font-size:12px">sha256: d0b12eaa85c0808e5692aef023fc99cec91d43077d7a02ead36b587dfd70a30b</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">242</td>
+          
+            <td>
+              
+                <pre class="snip">to distribute software through any other system and a licensee cannot</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/php/front-end/class-front-end.php
+            <div class="muted" style="font-size:12px">sha256: d209ced79db3941a224cb367f346d2790ad4e4794e0a2b7edd02db74a8882855</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">257</td>
+          
+            <td>
+              
+                <pre class="snip">		eval( &#34;?&gt;\n\n&#34; . $snippet-&gt;code . &#34;\n\n&lt;?php&#34; );</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/php/snippet-ops.php
+            <div class="muted" style="font-size:12px">sha256: a6c8d94905ed0fb18010629add219505426c074714c818aae9df5eece805e8c6</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">584</td>
+          
+            <td>
+              
+                <pre class="snip">		$result = eval( $code );</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-content/plugins/code-snippets/readme.txt
+            <div class="muted" style="font-size:12px">sha256: 4fdba9b2d79ae910118b004767579f21e11669db360fe334ee12172681debb05</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">319</td>
+          
+            <td>
+              
+                <pre class="snip">  * Added action notice queue system.</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+      
+      </tbody>
+    </table>
+  </div>
+
+</body>
+</html>

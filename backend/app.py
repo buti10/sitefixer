@@ -3,6 +3,7 @@ load_dotenv()
 
 import os
 from flask import Flask, jsonify
+
 from flask_cors import CORS
 
 # eigene Module
@@ -45,3 +46,7 @@ if __name__ == "__main__":
     seed_roles_permissions(session)
     app.run(host=os.getenv("BACKEND_HOST", "0.0.0.0"),
             port=int(os.getenv("BACKEND_PORT", 5000)), debug=False)
+
+
+
+

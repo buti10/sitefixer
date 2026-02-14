@@ -1,0 +1,15 @@
+{
+  "name": "memory_limits",
+  "description": "Set WP_MEMORY_LIMIT / WP_MAX_MEMORY_LIMIT (host-dependent).",
+  "changes": [
+    {
+      "set_constant": "WP_MEMORY_LIMIT",
+      "value": "256M"
+    },
+    {
+      "set_constant": "WP_MAX_MEMORY_LIMIT",
+      "value": "512M"
+    }
+  ],
+  "notes": "Respect host PHP memory_limit; use diagnose hints."
+}

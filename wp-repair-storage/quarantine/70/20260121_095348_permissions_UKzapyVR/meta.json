@@ -1,0 +1,18 @@
+{
+  "action_id": "20260121_095348_permissions_UKzapyVR",
+  "fix_id": "permissions",
+  "ticket_id": 70,
+  "actor_user_id": 1,
+  "actor_name": "Administrator",
+  "created_ts": 1768989229,
+  "wp_root": "/clickandbuilds/FixSite",
+  "project_root": "/clickandbuilds/FixSite",
+  "status": "applied",
+  "context": {
+    "rules": {}
+  },
+  "notes": "chmod_changed=1 errors=0",
+  "events": [
+    "chmod /clickandbuilds/FixSite/wp-content/db.php: 0o777 -> 0o644"
+  ]
+}

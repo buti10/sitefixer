@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <title>ohne Domain – Malware-Report</title>
+  <style>
+    @page { size: A4 landscape; margin: 14mm; }         /* Querformat PDF */
+    :root{
+      --fg:#111; --muted:#6b7280; --line:#e5e7eb;
+      --ok:#16a34a; --warn:#f59e0b; --bad:#ef4444; --chip:#f3f4f6;
+      --chipfg:#111; --bgcode:#0b1220; --fgcode:#e5e7eb; --hl:#fde68a;
+      --badge:#eef2ff; --badgefg:#3730a3;
+    }
+    *{ box-sizing:border-box }
+    body{ font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial; color:var(--fg); }
+    h1{ font-size:24px; margin:0 0 6px; }
+    h2{ font-size:18px; margin:18px 0 10px; }
+    small, .muted{ color:var(--muted); }
+    .row{ display:flex; gap:20px; align-items:center; }
+    .logo{ height:28px }
+    .kvs{ margin-top:4px }
+    .kvs span{ margin-right:12px }
+    .chip{ display:inline-block; background:var(--chip); color:var(--chipfg);
+           padding:6px 10px; border-radius:10px; font-weight:600; }
+    .b{ font-weight:700 }
+    .badge{ display:inline-block; padding:4px 8px; border-radius:8px;
+            background:var(--badge); color:var(--badgefg); font-weight:600 }
+    .bad   { background:#fee2e2; color:#991b1b }
+    .ok    { background:#dcfce7; color:#14532d }
+    .warn  { background:#fef3c7; color:#92400e }
+
+    .box{ border:1px solid var(--line); border-radius:14px; padding:14px; margin:12px 0 }
+    table{ width:100%; border-collapse:collapse }
+    th,td{ border-top:1px solid var(--line); padding:10px 10px; text-align:left; vertical-align:top }
+    th{ background:#fafafa; font-size:13px }
+    td.path{ width:40%; word-break:break-all }
+    td.line{ width:60px; text-align:center; color:var(--muted) }
+    td.sev  { width:120px }
+    td.kind { width:180px }
+    pre.snip{
+      background:var(--bgcode); color:var(--fgcode);
+      border-radius:10px; padding:10px 12px; margin:8px 0 0;
+      font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+      white-space:pre-wrap; word-break:break-word; max-height:140px; overflow:auto;
+    }
+    mark{ background:var(--hl); padding:0 2px }
+  </style>
+</head>
+<body>
+
+  <div class="row">
+    
+    <h1>Malware-Report</h1>
+  </div>
+
+  <div class="kvs muted">
+    <span><span class="b">Ticket</span> #1 – ohne Domain</span>
+    <span>•</span>
+    <span>Scan <code>e462f441</code></span>
+  </div>
+  <div class="kvs muted">
+    <span>Kunde: —</span>
+    <span>•</span>
+    <span>CMS: —</span>
+    <span>•</span>
+    <span>Hoster: —</span>
+    <span>•</span>
+    <span>Erzeugt: 2025-10-11 19:27:24</span>
+  </div>
+
+  <h2>Zusammenfassung</h2>
+  <div class="box">
+    <span class="chip">Total: <span class="b">26</span></span>
+    <span class="chip ok">Clean: <span class="b">25</span></span>
+    <span class="chip warn">Suspicious: <span class="b">0</span></span>
+    <span class="chip bad">Malicious: <span class="b">1</span></span>
+  </div>
+
+  <h2>Findings</h2>
+  <div class="box">
+    <table>
+      <thead>
+        <tr>
+          <th>Datei</th>
+          <th>Art</th>
+          <th>Schwere</th>
+          <th>Zeile</th>
+          <th style="width:40%">Ausschnitt</th>
+        </tr>
+      </thead>
+      <tbody>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /reinigung/bestand.php
+            <div class="muted" style="font-size:12px">sha256: 0164a0ca7a42ef4932e1a9e36dc182c5734b268b5d54ae5249ed425a1b8fe9d9</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">15</td>
+          
+            <td>
+              
+                <pre class="snip">@eval(\$_POST[dfsfsdfs];</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+      
+      </tbody>
+    </table>
+  </div>
+
+</body>
+</html>

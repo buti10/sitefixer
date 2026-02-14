@@ -1,0 +1,18 @@
+{
+  "defaults": {
+    "dir": "0755",
+    "file": "0644"
+  },
+  "special": [
+    {
+      "path_endswith": "wp-config.php",
+      "mode": "0640"
+    },
+    {
+      "path_contains": "wp-content/uploads",
+      "dir": "0755",
+      "file": "0644"
+    }
+  ],
+  "notes": "Adjust per host. Ownership changes often not possible via SFTP."
+}

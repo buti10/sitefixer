@@ -1,0 +1,57 @@
+<!--templates/report.html-->
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <title>Malware-Report2 – Ticket {{ ticket.id }}</title>
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;font-size:12px;color:#111}
+    header{display:flex;align-items:center;gap:16px;border-bottom:2px solid #eee;padding-bottom:8px;margin-bottom:16px}
+    header img{height:36px}
+    h1{font-size:18px;margin:0}
+    .meta{font-size:12px;color:#555}
+    .badge{display:inline-block;padding:2px 6px;border-radius:6px;font-size:11px}
+    .ok{background:#e8f5e9}.warn{background:#fff8e1}.bad{background:#ffebee}
+    pre{background:#f7f7f7;padding:8px;border-radius:6px;white-space:pre-wrap}
+    table{width:100%;border-collapse:collapse;margin-top:10px}
+    th,td{border-bottom:1px solid #eee;text-align:left;padding:6px}
+  </style>
+</head>
+<body>
+  <header>
+    <img src="{{ logo }}" alt="Logo">
+    <div>
+      <h1>Malware-Report</h1>
+      <div class="meta">Ticket #{{ ticket.id }} · {{ ticket.domain or '—' }} · Scan {{ scan.id }}</div>
+    </div>
+  </header>
+
+  <h2>Zusammenfassung</h2>
+  {% set c = (scan.summary.counts if scan.summary and scan.summary.counts else {}) %}
+  <p>
+    Total: <span class="badge">{{ c.total or 0 }}</span>
+    Clean: <span class="badge ok">{{ c.clean or 0 }}</span>
+    Suspicious: <span class="badge warn">{{ c.suspicious or 0 }}</span>
+    Malicious: <span class="badge bad">{{ c.malicious or 0 }}</span>
+  </p>
+
+  <h2>Findings</h2>
+  <table>
+    <thead><tr><th>Datei</th><th>Art</th><th>Schwere</th><th>Zeile</th></tr></thead>
+    <tbody>
+    {% for f in findings %}
+      {% set d = (f.detail if f.detail is mapping else {}) %}
+      <tr>
+        <td>{{ f.path }}</td>
+        <td>{{ f.kind }}</td>
+        <td>{{ 'hoch' if f.severity=='high' else 'mittel' }}</td>
+        <td>{{ d.line or '' }}</td>
+      </tr>
+      {% if include_snippets and d.snippet %}
+        <tr><td colspan="4"><pre>{{ d.snippet }}</pre></td></tr>
+      {% endif %}
+    {% endfor %}
+    </tbody>
+  </table>
+</body>
+</html>

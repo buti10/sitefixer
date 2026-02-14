@@ -1,0 +1,19 @@
+{
+  "action_id": "20260118_132339_permissions_CqWTTkI9",
+  "fix_id": "permissions",
+  "ticket_id": 70,
+  "actor_user_id": 1,
+  "actor_name": "Administrator",
+  "created_ts": 1768742620,
+  "wp_root": "/clickandbuilds/FixSite",
+  "project_root": "/clickandbuilds/FixSite",
+  "status": "applied",
+  "context": {
+    "rules": {}
+  },
+  "notes": "chmod_changed=2 errors=0",
+  "events": [
+    "chmod /clickandbuilds/FixSite/wp-includes/block-supports/settings.php: 0o640 -> 0o644",
+    "chmod /clickandbuilds/FixSite/wp-content/db.php: 0o777 -> 0o644"
+  ]
+}

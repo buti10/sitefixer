@@ -1,0 +1,92 @@
+rm -f /tmp/sf_cookies.txt
+
+curl -sS -c /tmp/sf_cookies.txt \
+  -H "Content-Type: application/json" \
+  -X POST "https://scann.sitefixer.de/api/auth/login" \
+  --data '{"email":"admin@sitefixer.de","password":"Nila2025/"}' \
+  -D - | sed -n '1,30p'
+
+
+echo "---- sf_access ----"
+grep -E $'\tsf_access\t' /tmp/sf_cookies.txt | awk '{print $7}' | head -n1
+echo "---- csrf_access_token ----"
+grep -E $'\tcsrf_access_token\t' /tmp/sf_cookies.txt | awk '{print $7}' | head -n1
+
+
+SF_ACCESS=$(grep -E $'\tsf_access\t' /tmp/sf_cookies.txt | awk '{print $7}' | head -n1)
+CSRF=$(grep -E $'\tcsrf_access_token\t' /tmp/sf_cookies.txt | awk '{print $7}' | head -n1)
+
+echo "$SF_ACCESS" | awk -F. '{print "JWT segments:", NF}'
+
+
+SID=$(curl -sS -X POST "https://scann.sitefixer.de/api/wp-repair/session/start" \
+  -H "Content-Type: application/json" \
+  -H "X-CSRF-TOKEN: $CSRF" \
+  -b /tmp/sf_cookies.txt \
+  -d '{
+    "ticket_id": 70,
+    "domain": "view-sales.com",
+    "ftp_host": "access983863139.webspace-data.io",
+    "ftp_user": "u114293392",
+    "ftp_pass": "Ionos2025/",
+    "ftp_port": 22
+  }' | jq -r .session_id)
+
+echo "SID=$SID"
+
+curl -sS "https://scann.sitefixer.de/api/wp-repair/health" | jq .
+
+curl -sS "https://scann.sitefixer.de/api/wp-repair/sftp/projects?session_id=$SID" | jq .
+
+PROJECT="/clickandbuilds/Sitefix2Blocksby"
+curl -sS -X POST "https://scann.sitefixer.de/api/wp-repair/sftp/select_project" \
+  -H "Content-Type: application/json" \
+  -b /tmp/sf_cookies.txt \
+  -d "{\"session_id\":\"$SID\",\"project_root\":\"$PROJECT\"}" | jq .
+
+curl -sS -X POST "https://scann.sitefixer.de/api/wp-repair/sftp/find_wp_root" \
+  -H "Content-Type: application/json" \
+  -b /tmp/sf_cookies.txt \
+  -d "{\"session_id\":\"$SID\",\"max_depth\":5}" | jq .
+
+WPROOT=$(curl -sS -X POST "https://scann.sitefixer.de/api/wp-repair/sftp/find_wp_root" \
+  -H "Content-Type: application/json" -b /tmp/sf_cookies.txt \
+  -d "{\"session_id\":\"$SID\",\"max_depth\":5}" | jq -r .wp_root)
+echo "WPROOT=$WPROOT"
+
+
+curl -sS -X POST "https://scann.sitefixer.de/api/wp-repair/diagnose" \
+  -H "Content-Type: application/json" \
+  -b /tmp/sf_cookies.txt \
+  -d "{\"session_id\":\"$SID\",\"wp_root\":\"$WPROOT\"}" | jq .
+
+
+curl -sS "https://scann.sitefixer.de/api/wp-repair/sftp/ls?session_id=$SID&path=$WPROOT" | jq .
+
+
+curl -sS -X POST "https://scann.sitefixer.de/api/wp-repair/core/preview" \
+  -H "Content-Type: application/json" \
+  -b /tmp/sf_cookies.txt \
+  -d "{\"session_id\":\"$SID\",\"wp_root\":\"$WPROOT\",\"max_files\":500,\"include_ok\":false}" | jq .
+
+
+curl -sS -X POST "https://scann.sitefixer.de/api/wp-repair/fix/dropins/preview" \
+  -H "Content-Type: application/json" \
+  -b /tmp/sf_cookies.txt \
+  -d "{\"session_id\":\"$SID\",\"wp_root\":\"$WPROOT\"}" | jq .
+
+OUT=$(curl -sS -X POST "https://scann.sitefixer.de/api/wp-repair/fix/maintenance/remove" \
+  -H "Content-Type: application/json" \
+  -b /tmp/sf_cookies.txt \
+  -d "{\"session_id\":\"$SID\",\"wp_root\":\"$WPROOT\"}")
+
+echo "$OUT" | jq .
+AID=$(echo "$OUT" | jq -r .action_id)
+echo "AID=$AID"
+
+
+curl -sS -X POST "https://scann.sitefixer.de/api/wp-repair/rollback" \
+  -H "Content-Type: application/json" \
+  -b /tmp/sf_cookies.txt \
+  -d "{\"session_id\":\"$SID\",\"action_id\":\"$AID\"}" | jq .
+

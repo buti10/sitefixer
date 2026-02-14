@@ -1,0 +1,26 @@
+{
+  "action_id": "20260119_123633_core_replace_omLlOFLU",
+  "fix_id": "core_replace",
+  "ticket_id": 70,
+  "actor_user_id": 1,
+  "actor_name": "Administrator",
+  "created_ts": 1768826193,
+  "wp_root": "/clickandbuilds/FixSite",
+  "project_root": "/clickandbuilds/FixSite",
+  "status": "failed",
+  "context": {
+    "max_files": 500,
+    "max_replace": 50,
+    "allow_changed": true,
+    "allow_missing": false,
+    "policy": null
+  },
+  "notes": "core_replace_apply replaced=0 errors=0",
+  "events": [
+    "core_replace_apply status=failed replaced=0 errors=0"
+  ],
+  "result": {
+    "replaced": [],
+    "errors": []
+  }
+}

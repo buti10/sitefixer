@@ -14,6 +14,56 @@
         <span v-if="saved" class="text-xs opacity-70 self-center">gespeichert</span>
       </div>
     </UiCard>
+        <!-- Mail-Vorlage: Angebot & Zahlungslink -->
+    <UiCard>
+      <h3 class="font-medium mb-3">Mail-Vorlage: Angebot & Zahlungslink</h3>
+      <p class="text-xs opacity-70 mb-4">
+        Diese Vorlage wird verwendet, wenn du aus dem Ticket heraus den Zahlungslink verschickst.
+        Du kannst Platzhalter verwenden:
+        <code class="font-mono bg-black/5 dark:bg-white/10 px-1 rounded">
+          {{ '{ticket_id}' }}, {{ '{customer_name}' }}, {{ '{amount}' }}, {{ '{payment_link}' }}
+        </code>
+      </p>
+
+      <div class="space-y-4">
+        <!-- Betreff -->
+        <UiInput
+          label="Betreff"
+          v-model="s.OFFER_MAIL_SUBJECT"
+          placeholder="Ihr Sitefixer-Angebot zu Ticket #{ticket_id}"
+        />
+
+        <!-- Mail-Text -->
+        <div>
+          <label class="text-xs font-medium block mb-1">Mail-Text</label>
+          <textarea
+            v-model="s.OFFER_MAIL_BODY"
+            rows="6"
+            class="w-full rounded-md border border-black/10 dark:border-white/20 bg-transparent px-2 py-1.5 text-sm font-mono"
+            placeholder="Hallo {customer_name},&#10;&#10;vielen Dank für Ihre Anfrage..."
+          ></textarea>
+          <p class="mt-1 text-[11px] opacity-60">
+            Verwende <code class="font-mono bg-black/5 dark:bg-white/10 px-1 rounded">{payment_link}</code>, um den Link einzufügen.
+          </p>
+        </div>
+
+        <!-- Signatur -->
+        <div>
+          <label class="text-xs font-medium block mb-1">Signatur</label>
+          <textarea
+            v-model="s.OFFER_MAIL_SIGNATURE"
+            rows="3"
+            class="w-full rounded-md border border-black/10 dark:border-white/20 bg-transparent px-2 py-1.5 text-sm font-mono"
+            placeholder="Sitefixer Support-Team&#10;support@sitefixer.de"
+          ></textarea>
+        </div>
+
+        <div class="flex gap-2">
+          <UiButton @click="save">Speichern</UiButton>
+          <span v-if="saved" class="text-xs opacity-70 self-center">gespeichert</span>
+        </div>
+      </div>
+    </UiCard>
 
     <!-- Core-Cache (CMS-Versionen) -->
     <UiCard>
@@ -107,28 +157,56 @@ const saved = ref(false)
  *    -> Passe Pfade an dein Backend an
  * ------------------------------------------------------- */
 const coreApi = {
-  tree:   (path = '/') =>
-    api.get('/core-cache/tree', { params: { path } }).then(r => r.data),
+  // path = '' (Root), 'Hallo', 'wordpress/6.6'
+  tree:   (path = '') =>
+    api.get('/cms-core/tree', { params: { path } }).then(r => r.data),
 
   mkdir:  (parentPath: string, name: string) =>
-    api.post('/core-cache/mkdir', { path: parentPath || '/', name }),
+    api.post('/cms-core/mkdir', { path: parentPath || '', name }),
 
   rename: (srcPath: string, newName: string) => {
-    const base = (srcPath || '').split('/').slice(0, -1).join('/') || '/'
-    const dst  = base + (base === '/' ? '' : '/') + newName
-    return api.post('/core-cache/rename', { src: srcPath, dst })
+    const base = (srcPath || '').split('/').slice(0, -1).join('/')
+    const dst  = (base ? base + '/' : '') + newName
+    return api.post('/cms-core/rename', { src: srcPath, dst })
   },
 
   remove: (path: string) =>
-    api.delete('/core-cache/rm', { params: { path } }),
+    api.delete('/cms-core/rm', { params: { path } }),
 
   upload: (path: string, files: File[], extract: boolean) => {
     const fd = new FormData()
     fd.append('files', files[0])
-    fd.append('path', path || '/')
+    fd.append('path', path || '')
     fd.append('extract', extract ? '1' : '0')
-    return api.post('/core-cache/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+    return api.post('/cms-core/upload', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
   },
+}
+
+async function loadSettings () {
+  const { data } = await api.get('/settings')
+  s.value = {
+    SITE_NAME: '',
+    SUPPORT_EMAIL: 'support@sitefixer.de',
+    OFFER_MAIL_SUBJECT: 'Ihr Sitefixer-Angebot zu Ticket #{ticket_id}',
+    OFFER_MAIL_BODY:
+      'Hallo {customer_name},\n\n' +
+      'vielen Dank für Ihre Anfrage.\n' +
+      'Hier ist der Zahlungslink zu Ihrem Angebot über {amount} €:\n' +
+      '{payment_link}\n\n' +
+      'Mit freundlichen Grüßen,\n' +
+      '{signature}',
+    OFFER_MAIL_SIGNATURE: 'Sitefixer Support-Team\nsupport@sitefixer.de',
+    ...(data || {})
+  }
+}
+
+
+async function save () {
+  saved.value = false
+  await api.post('/settings', s.value)
+  saved.value = true
 }
 
 
@@ -145,19 +223,19 @@ const fileInput = ref<HTMLInputElement | null>(null)
 const lastMessage = ref('')
 const lastMessageOk = ref(true)
 
-const rootLabel = '/core-cache'
+const rootLabel = '/cms-core'
 const uploadTarget = computed(() => {
   const sel = selected.value
-  if (!sel) return '/'
-  if (sel.type === 'dir') return sel.path || '/'
-  const p = ((sel.path) || '').split('/').slice(0, -1).join('/')
-  return p || '/'
+  if (!sel) return ''
+  if (sel.type === 'dir') return sel.path || ''
+  const p = (sel.path || '').split('/').slice(0, -1).join('/')
+  return p
 })
 
 function mapItems(items: Array<{name:string; path:string; type:'dir'|'file'}> = []) {
   return items.map(it => ({
     name: it.name,
-    path: it.path,
+    path: it.path,  // jetzt z.B. "Hallo" oder "wordpress/6.6"
     type: it.type === 'dir' ? 'dir' : 'file',
     open: false,
     loaded: it.type !== 'dir',
@@ -165,12 +243,12 @@ function mapItems(items: Array<{name:string; path:string; type:'dir'|'file'}> = 
   }))
 }
 
-async function reload (path = '/') {
+async function reload (path = '') {
   lastMessage.value = ''
   const data = await coreApi.tree(path)
   tree.value = {
     name: data.root || '/',
-    path: data.root || '/',
+    path: '',          // Root hat immer path = '' (relativ)
     type: 'dir',
     open: true,
     loaded: true,
@@ -181,11 +259,12 @@ async function reload (path = '/') {
 
 async function loadChildren (n: Node) {
   if (n.type === 'file') return
-  const data = await coreApi.tree(n.path)
+  const data = await coreApi.tree(n.path || '')
   n.children = mapItems(data.items || [])
   n.loaded = true
   n.open = true
 }
+
 
 function selectNode (n: Node) {
   selected.value = n
@@ -245,7 +324,7 @@ async function upload () {
       fd.append('path', target)
       fd.append('extract', extractArchive.value ? '1' : '0')
       files.forEach(f => fd.append('files', f))
-      await api.post('/core-cache/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+      await api.post('/cms-core/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
     }
 
     lastMessageOk.value = true
@@ -321,6 +400,6 @@ const ExplorerNode = defineComponent({
  * ------------------------------------------------------- */
 onMounted(async () => {
   await loadSettings()
-  await reload('/')   // Core-Cache laden (Root)
+  await reload('')   // Core-Cache laden (Root)
 })
 </script>

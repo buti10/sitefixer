@@ -1,0 +1,5 @@
+# Template: WordPress multisite subdirectory .htaccess (placeholder)
+RewriteEngine On
+RewriteBase /
+RewriteRule ^index\.php$ - [L]
+# add multisite rules here...

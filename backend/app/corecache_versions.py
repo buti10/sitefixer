@@ -7,7 +7,7 @@ from flask import Blueprint, request, jsonify, current_app, abort
 
 bp_corecache_versions = Blueprint("corecache_versions", __name__)
 
-CORE_CACHE_ROOT = Path(os.getenv("CORE_CACHE_ROOT", "/var/www/sitefixer/core-cache")).resolve()
+CORE_CACHE_ROOT = Path(os.getenv("CORE_CACHE_ROOT", "/var/www/sitefixer/cms-cache")).resolve()
 
 def _ensure_root():
     CORE_CACHE_ROOT.mkdir(parents=True, exist_ok=True)

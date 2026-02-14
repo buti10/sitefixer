@@ -53,7 +53,7 @@ def create_app():
     from app.malware_routes import bp as malware_bp
     from app.malware_reports import bp as reports_bp, bp2 as reports_legacy_bp
     from app.modules.repair import bp as repair_bp
-    from modules.comms_chat.routes import bp as bp_comms_chat
+    #from modules.comms_chat.routes import bp as bp_comms_chat
 
     # Neue CMS-Core Endpunkte
     # /api/core-cache   -> app.modules.cms_core.bp: bp_core_cache
@@ -64,8 +64,9 @@ def create_app():
     # Replace-Endpoint
     from app.modules.repair.replace_from_core import bp_replace
     
-    
-
+    from app.modules.comms_woot import bp as woot_bp
+    from app.modules.wp_uploads.routes import bp_wp_uploads
+    from app.modules.tickets.routes_public import router as public_router
     # Blueprints (Registrierung)
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(users_bp, url_prefix="/api/users")
@@ -81,7 +82,7 @@ def create_app():
     app.register_blueprint(malware_bp)
     app.register_blueprint(reports_bp)
     app.register_blueprint(reports_legacy_bp)
-    app.register_blueprint(bp_comms_chat, url_prefix="/api/comms/chat")
+    
     app.register_blueprint(repair_bp, url_prefix="/api/repair")
 
     # Neue Blueprints. Die Objekte bringen ihre eigenen url_prefix mit.
@@ -90,7 +91,9 @@ def create_app():
     #app.register_blueprint(bp_cmscore)                            # /api/cms-core
     app.register_blueprint(core_bp)
     app.register_blueprint(bp_replace)                           # /api/repair/replace-from-core o.ä.
-    
+    app.register_blueprint(woot_bp)
+    app.register_blueprint(bp_wp_uploads)
+    app.register_blueprint(public_router)
     # Health
     @app.get("/api/health")
     def health():

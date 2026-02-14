@@ -1,0 +1,1124 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <title>wh-sales.com – Malware-Report</title>
+  <style>
+    @page { size: A4 landscape; margin: 14mm; }         /* Querformat PDF */
+    :root{
+      --fg:#111; --muted:#6b7280; --line:#e5e7eb;
+      --ok:#16a34a; --warn:#f59e0b; --bad:#ef4444; --chip:#f3f4f6;
+      --chipfg:#111; --bgcode:#0b1220; --fgcode:#e5e7eb; --hl:#fde68a;
+      --badge:#eef2ff; --badgefg:#3730a3;
+    }
+    *{ box-sizing:border-box }
+    body{ font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial; color:var(--fg); }
+    h1{ font-size:24px; margin:0 0 6px; }
+    h2{ font-size:18px; margin:18px 0 10px; }
+    small, .muted{ color:var(--muted); }
+    .row{ display:flex; gap:20px; align-items:center; }
+    .logo{ height:28px }
+    .kvs{ margin-top:4px }
+    .kvs span{ margin-right:12px }
+    .chip{ display:inline-block; background:var(--chip); color:var(--chipfg);
+           padding:6px 10px; border-radius:10px; font-weight:600; }
+    .b{ font-weight:700 }
+    .badge{ display:inline-block; padding:4px 8px; border-radius:8px;
+            background:var(--badge); color:var(--badgefg); font-weight:600 }
+    .bad   { background:#fee2e2; color:#991b1b }
+    .ok    { background:#dcfce7; color:#14532d }
+    .warn  { background:#fef3c7; color:#92400e }
+
+    .box{ border:1px solid var(--line); border-radius:14px; padding:14px; margin:12px 0 }
+    table{ width:100%; border-collapse:collapse }
+    th,td{ border-top:1px solid var(--line); padding:10px 10px; text-align:left; vertical-align:top }
+    th{ background:#fafafa; font-size:13px }
+    td.path{ width:40%; word-break:break-all }
+    td.line{ width:60px; text-align:center; color:var(--muted) }
+    td.sev  { width:120px }
+    td.kind { width:180px }
+    pre.snip{
+      background:var(--bgcode); color:var(--fgcode);
+      border-radius:10px; padding:10px 12px; margin:8px 0 0;
+      font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+      white-space:pre-wrap; word-break:break-word; max-height:140px; overflow:auto;
+    }
+    mark{ background:var(--hl); padding:0 2px }
+  </style>
+</head>
+<body>
+
+  <div class="row">
+    
+    <h1>Malware-Report</h1>
+  </div>
+
+  <div class="kvs muted">
+    <span><span class="b">Ticket</span> #1 – wh-sales.com</span>
+    <span>•</span>
+    <span>Scan <code>4121caf1</code></span>
+  </div>
+  <div class="kvs muted">
+    <span>Kunde: Butrint Ahmetaj &lt;butrinti_abc_sk@hotmail.com&gt;</span>
+    <span>•</span>
+    <span>CMS: Wordpress</span>
+    <span>•</span>
+    <span>Hoster: fdgfdg</span>
+    <span>•</span>
+    <span>Erzeugt: 2025-11-20 14:48:38</span>
+  </div>
+
+  <h2>Zusammenfassung</h2>
+  <div class="box">
+    <span class="chip">Total: <span class="b">496</span></span>
+    <span class="chip ok">Clean: <span class="b">481</span></span>
+    <span class="chip warn">Suspicious: <span class="b">14</span></span>
+    <span class="chip bad">Malicious: <span class="b">1</span></span>
+  </div>
+
+  <h2>Findings</h2>
+  <div class="box">
+    <table>
+      <thead>
+        <tr>
+          <th>Datei</th>
+          <th>Art</th>
+          <th>Schwere</th>
+          <th>Zeile</th>
+          <th style="width:40%">Ausschnitt</th>
+        </tr>
+      </thead>
+      <tbody>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/about.php
+            <div class="muted" style="font-size:12px">sha256: 26814eab19391262fb35aaf89bba7fef744c76c59a8db947279ad3c63f041a82</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge warn">
+              medium
+            </span>
+          </td>
+          <td class="line">141</td>
+          
+            <td>
+              
+                <pre class="snip">				&lt;p&gt;&lt;?php _e( &#39;In WordPress 6.8, pages load faster than ever. When you or your user hovers over or clicks a link, WordPress may preload the next page, for a smoother, near-instant experience. The system balances speed and efficiency, and you can control how it works, with a plugin or your own code. This feature only works in modern browsers—older ones will simply ignore it without any impact.&#39;  …</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/import.php
+            <div class="muted" style="font-size:12px">sha256: 7289a8b3d4cef86d5e7a9b53f25eceb27c78c029091c77016c704b444e47b220</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge warn">
+              medium
+            </span>
+          </td>
+          <td class="line">78</td>
+          
+            <td>
+              
+                <pre class="snip">&lt;p&gt;&lt;?php _e( &#39;If you have posts or comments in another system, WordPress can import those into this site. To get started, choose a system to import from below:&#39; ); ?&gt;&lt;/p&gt;</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/import.php
+            <div class="muted" style="font-size:12px">sha256: 7289a8b3d4cef86d5e7a9b53f25eceb27c78c029091c77016c704b444e47b220</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge warn">
+              medium
+            </span>
+          </td>
+          <td class="line">78</td>
+          
+            <td>
+              
+                <pre class="snip">&lt;p&gt;&lt;?php _e( &#39;If you have posts or comments in another system, WordPress can import those into this site. To get started, choose a system to import from below:&#39; ); ?&gt;&lt;/p&gt;</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/import.php
+            <div class="muted" style="font-size:12px">sha256: 7289a8b3d4cef86d5e7a9b53f25eceb27c78c029091c77016c704b444e47b220</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge warn">
+              medium
+            </span>
+          </td>
+          <td class="line">217</td>
+          
+            <td>
+              
+                <pre class="snip">				&lt;td class=&#39;import-system&#39;&gt;</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/includes/class-pclzip.php
+            <div class="muted" style="font-size:12px">sha256: 74e844d42c1cbe89b43e9df36453f82632c2eaa800dcf17fc53a7822e808cbc4</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge warn">
+              medium
+            </span>
+          </td>
+          <td class="line">1381</td>
+          
+            <td>
+              
+                <pre class="snip">	// ----- Reset the file system cache</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/includes/class-pclzip.php
+            <div class="muted" style="font-size:12px">sha256: 74e844d42c1cbe89b43e9df36453f82632c2eaa800dcf17fc53a7822e808cbc4</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge warn">
+              medium
+            </span>
+          </td>
+          <td class="line">4078</td>
+          
+            <td>
+              
+                <pre class="snip">//      eval(&#39;$v_result = &#39;.$p_options[PCLZIP_CB_PRE_EXTRACT].&#39;(PCLZIP_CB_PRE_EXTRACT, $v_local_header);&#39;);</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/includes/class-pclzip.php
+            <div class="muted" style="font-size:12px">sha256: 74e844d42c1cbe89b43e9df36453f82632c2eaa800dcf17fc53a7822e808cbc4</div>
+          </td>
+          <td class="kind">obfuscation</td>
+          <td class="sev">
+            <span class="badge warn">
+              medium
+            </span>
+          </td>
+          <td class="line">3900</td>
+          
+            <td>
+              
+                <pre class="snip">            $v_file_content = @gzinflate($v_buffer);</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: obfuscation match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/includes/class-pclzip.php
+            <div class="muted" style="font-size:12px">sha256: 74e844d42c1cbe89b43e9df36453f82632c2eaa800dcf17fc53a7822e808cbc4</div>
+          </td>
+          <td class="kind">obfuscation</td>
+          <td class="sev">
+            <span class="badge warn">
+              medium
+            </span>
+          </td>
+          <td class="line">4131</td>
+          
+            <td>
+              
+                <pre class="snip">          $v_file_content = gzinflate($v_buffer);</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: obfuscation match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/includes/class-pclzip.php
+            <div class="muted" style="font-size:12px">sha256: 74e844d42c1cbe89b43e9df36453f82632c2eaa800dcf17fc53a7822e808cbc4</div>
+          </td>
+          <td class="kind">obfuscation</td>
+          <td class="sev">
+            <span class="badge warn">
+              medium
+            </span>
+          </td>
+          <td class="line">4250</td>
+          
+            <td>
+              
+                <pre class="snip">          if (($p_string = @gzinflate($v_data)) === FALSE) {</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: obfuscation match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/includes/class-wp-automatic-updater.php
+            <div class="muted" style="font-size:12px">sha256: 2f087c8e19b91eef15de4452f035e43ed2c1d2483e571238e8611ce518323a82</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge warn">
+              medium
+            </span>
+          </td>
+          <td class="line">169</td>
+          
+            <td>
+              
+                <pre class="snip">		 * location to be potentially managed by a version control system.</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/includes/class-wp-debug-data.php
+            <div class="muted" style="font-size:12px">sha256: 3d9e473f1bf3550032152e96c9a1fb2b85e4c4815b812e1d67fcd416e55d4475</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge warn">
+              medium
+            </span>
+          </td>
+          <td class="line">726</td>
+          
+            <td>
+              
+                <pre class="snip">		if ( function_exists( &#39;exec&#39; ) ) {</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/includes/class-wp-debug-data.php
+            <div class="muted" style="font-size:12px">sha256: 3d9e473f1bf3550032152e96c9a1fb2b85e4c4815b812e1d67fcd416e55d4475</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge warn">
+              medium
+            </span>
+          </td>
+          <td class="line">727</td>
+          
+            <td>
+              
+                <pre class="snip">			$gs = exec( &#39;gs --version&#39; );</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/includes/class-wp-debug-data.php
+            <div class="muted" style="font-size:12px">sha256: 3d9e473f1bf3550032152e96c9a1fb2b85e4c4815b812e1d67fcd416e55d4475</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge warn">
+              medium
+            </span>
+          </td>
+          <td class="line">1669</td>
+          
+            <td>
+              
+                <pre class="snip">	 * Gets the file system section of the debug data.</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/includes/class-wp-debug-data.php
+            <div class="muted" style="font-size:12px">sha256: 3d9e473f1bf3550032152e96c9a1fb2b85e4c4815b812e1d67fcd416e55d4475</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge warn">
+              medium
+            </span>
+          </td>
+          <td class="line">1741</td>
+          
+            <td>
+              
+                <pre class="snip">	 * Returns the value of a MySQL system variable.</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/includes/class-wp-debug-data.php
+            <div class="muted" style="font-size:12px">sha256: 3d9e473f1bf3550032152e96c9a1fb2b85e4c4815b812e1d67fcd416e55d4475</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge warn">
+              medium
+            </span>
+          </td>
+          <td class="line">1747</td>
+          
+            <td>
+              
+                <pre class="snip">	 * @param string $mysql_var Name of the MySQL system variable.</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/includes/class-wp-screen.php
+            <div class="muted" style="font-size:12px">sha256: 1a22b6b4a125a09906f8fd48bcad605aa7f3375d35aafd1146d58e673602257b</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge warn">
+              medium
+            </span>
+          </td>
+          <td class="line">97</td>
+          
+            <td>
+              
+                <pre class="snip">	 * The parent_file for the screen per the admin menu system.</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/includes/file.php
+            <div class="muted" style="font-size:12px">sha256: fe672154476189d0047cb1ff550cb38e351cb7b10029099ca33cacab09ad0129</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">5</td>
+          
+            <td>
+              
+                <pre class="snip"> * Functions for reading, writing, modifying, and deleting files on the file system.</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/includes/file.php
+            <div class="muted" style="font-size:12px">sha256: fe672154476189d0047cb1ff550cb38e351cb7b10029099ca33cacab09ad0129</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">1416</td>
+          
+            <td>
+              
+                <pre class="snip">				__( &#39;The authenticity of %s could not be verified as signature verification is unavailable on this system.&#39; ),</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/includes/file.php
+            <div class="muted" style="font-size:12px">sha256: fe672154476189d0047cb1ff550cb38e351cb7b10029099ca33cacab09ad0129</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">1450</td>
+          
+            <td>
+              
+                <pre class="snip">					__( &#39;The authenticity of %s could not be verified as signature verification is unavailable on this system.&#39; ),</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/includes/file.php
+            <div class="muted" style="font-size:12px">sha256: fe672154476189d0047cb1ff550cb38e351cb7b10029099ca33cacab09ad0129</div>
+          </td>
+          <td class="kind">obfuscation</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">1372</td>
+          
+            <td>
+              
+                <pre class="snip">		$expected_raw_md5 = base64_decode( $expected_md5 );</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: obfuscation match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/includes/file.php
+            <div class="muted" style="font-size:12px">sha256: fe672154476189d0047cb1ff550cb38e351cb7b10029099ca33cacab09ad0129</div>
+          </td>
+          <td class="kind">obfuscation</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">1486</td>
+          
+            <td>
+              
+                <pre class="snip">		$signature_raw = base64_decode( $signature );</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: obfuscation match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/includes/file.php
+            <div class="muted" style="font-size:12px">sha256: fe672154476189d0047cb1ff550cb38e351cb7b10029099ca33cacab09ad0129</div>
+          </td>
+          <td class="kind">obfuscation</td>
+          <td class="sev">
+            <span class="badge bad">
+              high
+            </span>
+          </td>
+          <td class="line">1495</td>
+          
+            <td>
+              
+                <pre class="snip">			$key_raw = base64_decode( $key );</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: obfuscation match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/includes/misc.php
+            <div class="muted" style="font-size:12px">sha256: e236a9c90108e79e64e6b2e2b75d12e43cfe09ead88d6b2cf98ba73897ef98a0</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge warn">
+              medium
+            </span>
+          </td>
+          <td class="line">837</td>
+          
+            <td>
+              
+                <pre class="snip">	$rules = $xpath-&gt;query( &#39;/configuration/system.webServer/rewrite/rules/rule[starts-with(@name,\&#39;wordpress\&#39;)] | /configuration/system.webServer/rewrite/rules/rule[starts-with(@name,\&#39;WordPress\&#39;)]&#39; );</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/includes/misc.php
+            <div class="muted" style="font-size:12px">sha256: e236a9c90108e79e64e6b2e2b75d12e43cfe09ead88d6b2cf98ba73897ef98a0</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge warn">
+              medium
+            </span>
+          </td>
+          <td class="line">837</td>
+          
+            <td>
+              
+                <pre class="snip">	$rules = $xpath-&gt;query( &#39;/configuration/system.webServer/rewrite/rules/rule[starts-with(@name,\&#39;wordpress\&#39;)] | /configuration/system.webServer/rewrite/rules/rule[starts-with(@name,\&#39;WordPress\&#39;)]&#39; );</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/includes/misc.php
+            <div class="muted" style="font-size:12px">sha256: e236a9c90108e79e64e6b2e2b75d12e43cfe09ead88d6b2cf98ba73897ef98a0</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge warn">
+              medium
+            </span>
+          </td>
+          <td class="line">872</td>
+          
+            <td>
+              
+                <pre class="snip">	$rules = $xpath-&gt;query( &#39;/configuration/system.webServer/rewrite/rules/rule[starts-with(@name,\&#39;wordpress\&#39;)] | /configuration/system.webServer/rewrite/rules/rule[starts-with(@name,\&#39;WordPress\&#39;)]&#39; );</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/includes/misc.php
+            <div class="muted" style="font-size:12px">sha256: e236a9c90108e79e64e6b2e2b75d12e43cfe09ead88d6b2cf98ba73897ef98a0</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge warn">
+              medium
+            </span>
+          </td>
+          <td class="line">872</td>
+          
+            <td>
+              
+                <pre class="snip">	$rules = $xpath-&gt;query( &#39;/configuration/system.webServer/rewrite/rules/rule[starts-with(@name,\&#39;wordpress\&#39;)] | /configuration/system.webServer/rewrite/rules/rule[starts-with(@name,\&#39;WordPress\&#39;)]&#39; );</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/includes/misc.php
+            <div class="muted" style="font-size:12px">sha256: e236a9c90108e79e64e6b2e2b75d12e43cfe09ead88d6b2cf98ba73897ef98a0</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge warn">
+              medium
+            </span>
+          </td>
+          <td class="line">916</td>
+          
+            <td>
+              
+                <pre class="snip">	$wordpress_rules = $xpath-&gt;query( &#39;/configuration/system.webServer/rewrite/rules/rule[starts-with(@name,\&#39;wordpress\&#39;)] | /configuration/system.webServer/rewrite/rules/rule[starts-with(@name,\&#39;WordPress\&#39;)]&#39; );</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/includes/misc.php
+            <div class="muted" style="font-size:12px">sha256: e236a9c90108e79e64e6b2e2b75d12e43cfe09ead88d6b2cf98ba73897ef98a0</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge warn">
+              medium
+            </span>
+          </td>
+          <td class="line">916</td>
+          
+            <td>
+              
+                <pre class="snip">	$wordpress_rules = $xpath-&gt;query( &#39;/configuration/system.webServer/rewrite/rules/rule[starts-with(@name,\&#39;wordpress\&#39;)] | /configuration/system.webServer/rewrite/rules/rule[starts-with(@name,\&#39;WordPress\&#39;)]&#39; );</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/includes/misc.php
+            <div class="muted" style="font-size:12px">sha256: e236a9c90108e79e64e6b2e2b75d12e43cfe09ead88d6b2cf98ba73897ef98a0</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge warn">
+              medium
+            </span>
+          </td>
+          <td class="line">923</td>
+          
+            <td>
+              
+                <pre class="snip">	$xml_nodes = $xpath-&gt;query( &#39;/configuration/system.webServer/rewrite/rules&#39; );</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/includes/misc.php
+            <div class="muted" style="font-size:12px">sha256: e236a9c90108e79e64e6b2e2b75d12e43cfe09ead88d6b2cf98ba73897ef98a0</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge warn">
+              medium
+            </span>
+          </td>
+          <td class="line">930</td>
+          
+            <td>
+              
+                <pre class="snip">		$xml_nodes = $xpath-&gt;query( &#39;/configuration/system.webServer/rewrite&#39; );</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/includes/misc.php
+            <div class="muted" style="font-size:12px">sha256: e236a9c90108e79e64e6b2e2b75d12e43cfe09ead88d6b2cf98ba73897ef98a0</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge warn">
+              medium
+            </span>
+          </td>
+          <td class="line">939</td>
+          
+            <td>
+              
+                <pre class="snip">			$xml_nodes = $xpath-&gt;query( &#39;/configuration/system.webServer&#39; );</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/includes/misc.php
+            <div class="muted" style="font-size:12px">sha256: e236a9c90108e79e64e6b2e2b75d12e43cfe09ead88d6b2cf98ba73897ef98a0</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge warn">
+              medium
+            </span>
+          </td>
+          <td class="line">945</td>
+          
+            <td>
+              
+                <pre class="snip">				$system_web_server_node = $doc-&gt;createElement( &#39;system.webServer&#39; );</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/includes/network.php
+            <div class="muted" style="font-size:12px">sha256: 73866e2c3dc67f2bcb70271260790fee99cff196b5c6191bdcda9e0a96c5fc27</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge warn">
+              medium
+            </span>
+          </td>
+          <td class="line">603</td>
+          
+            <td>
+              
+                <pre class="snip">    &lt;system.webServer&gt;</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/includes/network.php
+            <div class="muted" style="font-size:12px">sha256: 73866e2c3dc67f2bcb70271260790fee99cff196b5c6191bdcda9e0a96c5fc27</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge warn">
+              medium
+            </span>
+          </td>
+          <td class="line">644</td>
+          
+            <td>
+              
+                <pre class="snip">    &lt;/system.webServer&gt;</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/media-new.php
+            <div class="muted" style="font-size:12px">sha256: 3df3a0b14e559a835ebd27945ded283e60173ab01c67cf5aedc06d2d6330436d</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge warn">
+              medium
+            </span>
+          </td>
+          <td class="line">54</td>
+          
+            <td>
+              
+                <pre class="snip">					&#39;&lt;li&gt;&#39; . __( &#39;Clicking &lt;strong&gt;Select Files&lt;/strong&gt; opens a navigation window showing you files in your operating system. Selecting &lt;strong&gt;Open&lt;/strong&gt; after clicking on the file you want activates a progress bar on the uploader screen.&#39; ) . &#39;&lt;/li&gt;&#39; .</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/network/themes.php
+            <div class="muted" style="font-size:12px">sha256: 3e7757dead972e03168e4992585702cbb965de75b9069e964f88ab47f0947d62</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge warn">
+              medium
+            </span>
+          </td>
+          <td class="line">328</td>
+          
+            <td>
+              
+                <pre class="snip">				&#39;&lt;p&gt;&#39; . __( &#39;Auto-updates can be enabled or disabled for each individual theme. Themes with auto-updates enabled will display the estimated date of the next auto-update. Auto-updates depends on the WP-Cron task scheduling system.&#39; ) . &#39;&lt;/p&gt;&#39; .</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/options-permalink.php
+            <div class="muted" style="font-size:12px">sha256: 9d931a591540d4acdaa464dda9fe1ab11ad384e7086dfef5bf40bedd513befae</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge warn">
+              medium
+            </span>
+          </td>
+          <td class="line">471</td>
+          
+            <td>
+              
+                <pre class="snip">					&#39;&lt;code&gt;/&amp;lt;configuration&amp;gt;/&amp;lt;system.webServer&amp;gt;/&amp;lt;rewrite&amp;gt;/&amp;lt;rules&amp;gt;&lt;/code&gt;&#39;</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/plugins.php
+            <div class="muted" style="font-size:12px">sha256: 39f237dda3e826ee702fe361f9713eeacad360c97c3f1bf2d40450e91bd2e714</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge warn">
+              medium
+            </span>
+          </td>
+          <td class="line">596</td>
+          
+            <td>
+              
+                <pre class="snip">					&#39;&lt;p&gt;&#39; . __( &#39;Auto-updates can be enabled or disabled for each individual plugin. Plugins with auto-updates enabled will display the estimated date of the next auto-update. Auto-updates depends on the WP-Cron task scheduling system.&#39; ) . &#39;&lt;/p&gt;&#39; .</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/plugins.php
+            <div class="muted" style="font-size:12px">sha256: 39f237dda3e826ee702fe361f9713eeacad360c97c3f1bf2d40450e91bd2e714</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge warn">
+              medium
+            </span>
+          </td>
+          <td class="line">597</td>
+          
+            <td>
+              
+                <pre class="snip">					&#39;&lt;p&gt;&#39; . __( &#39;Auto-updates are only available for plugins recognized by WordPress.org, or that include a compatible update system.&#39; ) . &#39;&lt;/p&gt;&#39; .</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/themes.php
+            <div class="muted" style="font-size:12px">sha256: 7e43ceb664e88ed140289a0e4a7b6b042d4cf85b198d93c85f14a3416a8be8bb</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge warn">
+              medium
+            </span>
+          </td>
+          <td class="line">191</td>
+          
+            <td>
+              
+                <pre class="snip">		&#39;&lt;p&gt;&#39; . __( &#39;Auto-updates can be enabled or disabled for each individual theme. Themes with auto-updates enabled will display the estimated date of the next auto-update. Auto-updates depends on the WP-Cron task scheduling system.&#39; ) . &#39;&lt;/p&gt;&#39; .</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+        
+        
+        
+        <tr>
+          <td class="path">
+            /clickandbuilds/FixSite/wp-admin/update-core.php
+            <div class="muted" style="font-size:12px">sha256: b8b3ec6e7d3f6f43d83128554bedcceae39e6f1c402eebc3b6d79653c6d6d844</div>
+          </td>
+          <td class="kind">dangerous_functions</td>
+          <td class="sev">
+            <span class="badge warn">
+              medium
+            </span>
+          </td>
+          <td class="line">1019</td>
+          
+            <td>
+              
+                <pre class="snip">	$help_tab_autoupdates  = &#39;&lt;p&gt;&#39; . __( &#39;Auto-updates can be enabled or disabled for WordPress major versions and for each individual theme or plugin. Themes or plugins with auto-updates enabled will display the estimated date of the next auto-update. Auto-updates depends on the WP-Cron task scheduling system.&#39; ) . &#39;&lt;/p&gt;&#39;;</pre>
+                <div class="muted" style="font-size:12px; margin-top:6px">Hinweis: dangerous_functions match</div>
+              
+            </td>
+          
+        </tr>
+      
+      
+      </tbody>
+    </table>
+  </div>
+
+</body>
+</html>

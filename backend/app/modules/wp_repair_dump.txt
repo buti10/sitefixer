@@ -1,0 +1,3384 @@
+
+
+===== FILE: wp_repair/diagnose.py =====
+
+# /var/www/sitefixer/backend/app/modules/wp-repair/diagnose.py
+from __future__ import annotations
+
+import re
+from typing import Any, Dict, List, Optional, Tuple
+
+from app.modules.wp_repair.sftp_sessions import get_sftp_client
+from app.modules.wp_repair.inventory_sftp import build_inventory_sftp
+from app.modules.wp_repair.log_reader_sftp import read_logs_sftp
+
+from .inventory import build_inventory, SftpFS, LocalFS
+from .http_probe import probe_site
+from .log_reader import read_logs
+
+
+# -----------------------------
+# Rule helpers
+# -----------------------------
+
+def _pick_http_status(http: Dict[str, Any], key: str) -> Optional[int]:
+    try:
+        return int(http["targets"][key]["status"])
+    except Exception:
+        return None
+
+
+def _has_redirect_loop(target: Dict[str, Any]) -> bool:
+    # A crude check: many hops OR repeated urls
+    try:
+        hops = target.get("hops") or []
+        if len(hops) >= 6:
+            return True
+        seen = set()
+        for h in hops:
+            u = h.get("url")
+            if not u:
+                continue
+            if u in seen:
+                return True
+            seen.add(u)
+    except Exception:
+        pass
+    return False
+
+
+def _extract_error_signals(logs: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Summarize common fatal patterns + top plugin/theme offenders.
+    """
+    signals: Dict[str, Any] = {
+        "fatal_entries": [],
+        "pattern_hits": {},
+        "top_plugins": logs.get("summary", {}).get("top_plugins", []),
+        "top_themes": logs.get("summary", {}).get("top_themes", []),
+    }
+
+    patterns = {
+        "memory_exhausted": re.compile(r"Allowed memory size of .* exhausted", re.IGNORECASE),
+        "parse_error": re.compile(r"Parse error", re.IGNORECASE),
+        "undefined_function": re.compile(r"Call to undefined function", re.IGNORECASE),
+        "class_not_found": re.compile(r"Class .* not found", re.IGNORECASE),
+        "cannot_redeclare": re.compile(r"Cannot redeclare", re.IGNORECASE),
+        "db_connect": re.compile(r"Error establishing a database connection|Access denied for user|Unknown database", re.IGNORECASE),
+        "missing_file": re.compile(r"failed to open stream: No such file or directory", re.IGNORECASE),
+    }
+    signals["pattern_hits"] = {k: 0 for k in patterns.keys()}
+
+    # Collect up to N fatals across all sources
+    fatals: List[Dict[str, Any]] = []
+    for src in logs.get("sources", []) or []:
+        for e in src.get("entries", []) or []:
+            if e.get("level") == "fatal" or "fatal error" in (e.get("message", "").lower()):
+                fatals.append(e)
+
+            msg = e.get("message", "") or ""
+            for key, rx in patterns.items():
+                if rx.search(msg):
+                    signals["pattern_hits"][key] += 1
+
+    # Keep last 15 fatals
+    signals["fatal_entries"] = fatals[-15:]
+
+    return signals
+
+
+def _recommend_actions(
+    *,
+    inventory: Dict[str, Any],
+    http: Dict[str, Any],
+    logs: Dict[str, Any],
+) -> Tuple[str, List[Dict[str, Any]]]:
+    """
+    Returns: (suspected_cause, recommended_actions[])
+    Action format:
+      { "id": "fix.htaccess.reset", "label": "...", "severity": "P1|P2|P3", "params": {...} }
+    """
+    actions: List[Dict[str, Any]] = []
+    suspected = "unknown"
+
+    fe = _extract_error_signals(logs)
+    fatal_entries = fe.get("fatal_entries", [])
+    top_plugins = fe.get("top_plugins", [])
+    top_themes = fe.get("top_themes", [])
+    hits = fe.get("pattern_hits", {}) or {}
+
+    # HTTP statuses
+    st_front = _pick_http_status(http, "frontend")
+    st_login = _pick_http_status(http, "login")
+    st_admin = _pick_http_status(http, "admin")
+
+    # Redirect loops
+    loop_front = _has_redirect_loop(http.get("targets", {}).get("frontend", {}) or {})
+    loop_login = _has_redirect_loop(http.get("targets", {}).get("login", {}) or {})
+    loop_admin = _has_redirect_loop(http.get("targets", {}).get("admin", {}) or {})
+
+    # Signals from inventory
+    dropins = inventory.get("dropins", {}) or {}
+    has_object_cache = bool(dropins.get("object_cache"))
+    has_advanced_cache = bool(dropins.get("advanced_cache"))
+    has_maintenance = bool(dropins.get("maintenance"))
+
+    # --- P1 emergency recommendations ---
+    # Maintenance mode
+    if has_maintenance:
+        suspected = "maintenance_mode"
+        actions.append({
+            "id": "fix.maintenance.remove",
+            "label": "Maintenance-Mode entfernen (.maintenance)",
+            "severity": "P1",
+            "params": {},
+        })
+
+    # Redirect loop: likely URLs or htaccess
+    if loop_front or loop_login or loop_admin:
+        suspected = "redirect_loop"
+        actions.append({
+            "id": "fix.htaccess.reset",
+            "label": ".htaccess zurücksetzen (WP Standard)",
+            "severity": "P1",
+            "params": {},
+        })
+        actions.append({
+            "id": "db.fix.siteurl_home",
+            "label": "DB prüfen: siteurl/home (Redirect-Loop Fix)",
+            "severity": "P1",
+            "params": {},
+        })
+
+    # 404 widespread (rewrite)
+    if (st_front == 404 and st_login in (404, None)) or (st_admin == 404):
+        suspected = "rewrite_or_root"
+        actions.append({
+            "id": "fix.htaccess.reset",
+            "label": ".htaccess zurücksetzen (Rewrite reparieren)",
+            "severity": "P1",
+            "params": {},
+        })
+
+    # 403 (permissions or WAF) – safe attempt permissions first
+    if st_front == 403 or st_login == 403 or st_admin == 403:
+        suspected = "permissions_or_waf"
+        actions.append({
+            "id": "fix.permissions.normalize",
+            "label": "Dateirechte normalisieren (755/644)",
+            "severity": "P1",
+            "params": {},
+        })
+    if st_front == 200 and st_login == 200 and st_admin == 200 and inventory.get("wp_detected"):
+        suspected = "ok_or_soft_issue"
+        actions.append({
+            "id": "info.review.plugins",
+            "label": "Hinweis: Plugins/Drop-ins prüfen (Read-only)",
+            "severity": "P3",
+            "params": {},
+        })
+
+    # 500/critical errors – isolate plugins/themes first
+    if st_front in (500, 502, 503) or st_admin in (500, 502, 503) or hits.get("parse_error", 0) > 0:
+        # If plugin/themepath appears, prefer targeted
+        suspected = "php_runtime"
+        actions.append({
+            "id": "fix.cache.disable_dropins",
+            "label": "Cache/Drop-ins deaktivieren (object-cache/advanced-cache)",
+            "severity": "P1",
+            "params": {},
+        })
+        actions.append({
+            "id": "plugins.disable_all",
+            "label": "Alle Plugins deaktivieren (Notfall)",
+            "severity": "P1",
+            "params": {},
+        })
+        actions.append({
+            "id": "themes.switch_default",
+            "label": "Auf Default-Theme wechseln (Notfall)",
+            "severity": "P2",
+            "params": {"theme": "twentytwentyfour"},
+        })
+
+    # DB connect errors
+    if hits.get("db_connect", 0) > 0:
+        suspected = "database"
+        actions.append({
+            "id": "db.check.connection",
+            "label": "DB Verbindung testen (wp-config)",
+            "severity": "P1",
+            "params": {},
+        })
+
+    # Memory exhausted
+    if hits.get("memory_exhausted", 0) > 0:
+        suspected = "php_memory"
+        actions.append({
+            "id": "env.recommend.memory_limit",
+            "label": "Empfehlung: memory_limit erhöhen (z. B. 256M/512M)",
+            "severity": "P2",
+            "params": {},
+        })
+
+    # --- Targeted replace suggestions from logs (top offenders) ---
+    # If top plugin offenders exist, suggest replace
+    for p in top_plugins[:2]:
+        slug = p.get("slug")
+        if not slug:
+            continue
+        actions.append({
+            "id": "plugins.replace",
+            "label": f"Plugin ersetzen (WP.org): {slug}",
+            "severity": "P2",
+            "params": {"slug": slug, "prefer_installed_version": True},
+        })
+        suspected = suspected if suspected != "unknown" else "plugin"
+
+    for t in top_themes[:1]:
+        slug = t.get("slug")
+        if not slug:
+            continue
+        actions.append({
+            "id": "themes.replace",
+            "label": f"Theme ersetzen (WP.org): {slug}",
+            "severity": "P3",
+            "params": {"slug": slug, "prefer_installed_version": True},
+        })
+        suspected = suspected if suspected != "unknown" else "theme"
+
+    # Core replace as later option if still broken
+    if (st_front in (500, 404) and st_login in (500, 404)) and inventory.get("wp_detected"):
+        actions.append({
+            "id": "core.replace",
+            "label": "WordPress Core ersetzen (gleiche Version)",
+            "severity": "P3",
+            "params": {"prefer_same_version": True},
+        })
+        suspected = suspected if suspected != "unknown" else "core"
+
+    # De-duplicate by action id + params
+    uniq: List[Dict[str, Any]] = []
+    seen = set()
+    for a in actions:
+        key = (a.get("id"), str(a.get("params", {})))
+        if key in seen:
+            continue
+        seen.add(key)
+        uniq.append(a)
+
+    if suspected == "unknown":
+        # fallback
+        suspected = "needs_triage"
+        uniq.insert(0, {
+            "id": "plugins.disable_all",
+            "label": "Alle Plugins deaktivieren (sicherer erster Test)",
+            "severity": "P2",
+            "params": {},
+        })
+
+    return suspected, uniq
+
+
+# -----------------------------
+# Public API
+# -----------------------------
+
+def run_diagnose(
+    *,
+    root_path: str,
+    base_url: str,
+    session_id: str,
+    verify_ssl: bool = True,
+    capture_snippet: bool = True,
+    tail_lines: int = 300,
+    redact_logs: bool = True,
+) -> Dict[str, Any]:
+    """
+    Orchestrates:
+      - inventory (filesystem)
+      - http probes
+      - logs tail + normalization
+      - rule-based recommendations
+    """
+    
+    client = None
+    sftp = None
+    try:
+        client, sftp = get_sftp_client(session_id)
+        inv = build_inventory_sftp(sftp=sftp, wp_root=root_path)
+
+        http = probe_site(base_url, verify_ssl=verify_ssl, capture_snippet=capture_snippet)
+        logs = read_logs_sftp(sftp=sftp, wp_root=root_path, tail_lines=tail_lines, redact=redact_logs)
+
+        suspected, actions = _recommend_actions(inventory=inv, http=http, logs=logs)
+
+        triage = {
+            "frontend": _pick_http_status(http, "frontend"),
+            "login": _pick_http_status(http, "login"),
+            "admin": _pick_http_status(http, "admin"),
+        }
+
+        return {
+            "ok": True,
+            "input": {"root_path": root_path, "base_url": base_url, "verify_ssl": verify_ssl},
+            "triage": triage,
+            "suspected_cause": suspected,
+            "recommended_actions": actions,
+            "inventory": inv,
+            "http": http,
+            "logs": logs,
+        }
+    finally:
+        try:
+            if sftp: sftp.close()
+        except Exception:
+            pass
+        try:
+            if client: client.close()
+        except Exception:
+            pass
+
+
+
+===== FILE: wp_repair/sftp.py =====
+
+#var/www/sitefixer/backend/app/modules/wp_repair/sftp.py
+from __future__ import annotations
+from dataclasses import dataclass
+from typing import List, Dict, Any, Optional, Tuple
+import posixpath
+
+import paramiko
+
+@dataclass
+class SftpCreds:
+    host: str
+    username: str
+    password: str
+    port: int = 22
+
+def connect_sftp(creds: SftpCreds) -> Tuple[paramiko.SSHClient, paramiko.SFTPClient]:
+    client = paramiko.SSHClient()
+    client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    client.connect(
+        hostname=creds.host,
+        port=int(creds.port or 22),
+        username=creds.username,
+        password=creds.password,
+        timeout=12,
+        banner_timeout=12,
+        auth_timeout=12,
+    )
+    sftp = client.open_sftp()
+    return client, sftp
+
+def sftp_ls(sftp: paramiko.SFTPClient, path: str) -> List[Dict[str, Any]]:
+    out = []
+    for attr in sftp.listdir_attr(path):
+        name = attr.filename
+        mode = attr.st_mode
+        is_dir = (mode & 0o040000) == 0o040000
+        out.append({
+            "name": name,
+            "type": "dir" if is_dir else "file",
+            "size": None if is_dir else attr.st_size,
+        })
+    # sort: dirs first
+    out.sort(key=lambda x: (0 if x["type"] == "dir" else 1, x["name"].lower()))
+    return out
+
+def exists(sftp: paramiko.SFTPClient, p: str) -> bool:
+    try:
+        sftp.stat(p)
+        return True
+    except Exception:
+        return False
+
+def find_wp_roots(sftp: paramiko.SFTPClient, start: str = "/", max_depth: int = 6, max_nodes: int = 6000) -> List[Dict[str, Any]]:
+    """
+    Find WP roots by locating wp-config.php (simple heuristic).
+    """
+    roots = []
+    seen = 0
+    stack = [(start, 0)]
+    while stack:
+        path, depth = stack.pop()
+        if depth > max_depth:
+            continue
+        seen += 1
+        if seen > max_nodes:
+            break
+
+        wp_config = posixpath.join(path, "wp-config.php")
+        if exists(sftp, wp_config):
+            roots.append({"root_path": path, "label": path})
+            continue
+
+        # scan children
+        try:
+            for item in sftp.listdir_attr(path):
+                name = item.filename
+                mode = item.st_mode
+                is_dir = (mode & 0o040000) == 0o040000
+                if not is_dir:
+                    continue
+                if name in (".", ".."):
+                    continue
+                if name.startswith(".") and name not in (".well-known",):
+                    continue
+                child = posixpath.join(path, name)
+                stack.append((child, depth + 1))
+        except Exception:
+            continue
+    return roots
+
+
+===== FILE: wp_repair/session_store.py =====
+
+import time
+import secrets
+from dataclasses import dataclass
+from typing import Dict, Any, Optional
+
+@dataclass
+class Session:
+    sid: str
+    created_at: float
+    expires_at: float
+    data: Dict[str, Any]
+
+class InMemoryTTLStore:
+    def __init__(self):
+        self._sessions: Dict[str, Session] = {}
+
+    def create(self, data: Dict[str, Any], ttl_seconds: int = 1800) -> str:
+        sid = secrets.token_urlsafe(24)
+        now = time.time()
+        self._sessions[sid] = Session(
+            sid=sid,
+            created_at=now,
+            expires_at=now + ttl_seconds,
+            data=data,
+        )
+        return sid
+
+    def get(self, sid: str) -> Optional[Session]:
+        s = self._sessions.get(sid)
+        if not s:
+            return None
+        if time.time() > s.expires_at:
+            self._sessions.pop(sid, None)
+            return None
+        return s
+
+    def delete(self, sid: str) -> None:
+        self._sessions.pop(sid, None)
+
+store = InMemoryTTLStore()
+
+
+===== FILE: wp_repair/services.py =====
+
+from __future__ import annotations
+from typing import Dict, Any, Optional, Tuple
+import os
+import json
+import hashlib
+import datetime as dt
+
+from flask import current_app
+
+from app.extensions import db
+from .models import RepairRun, RepairActionLog, RepairArtifact
+from .session_store import store
+from .sftp import SftpCreds, connect_sftp, sftp_ls, find_wp_roots
+
+ART_BASE = "/var/www/sitefixer/repair_artifacts"
+
+def _sha256_bytes(b: bytes) -> str:
+    h = hashlib.sha256()
+    h.update(b)
+    return h.hexdigest()
+
+def _ensure_dir(p: str) -> None:
+    os.makedirs(p, exist_ok=True)
+
+def _ticket_access(ticket: Dict[str, Any]) -> Tuple[str, str, str, int]:
+    # Passe hier an dein Ticket-Schema an (du hast ftp_host/ftp_user/ftp_pass etc.)
+    host = ticket.get("ftp_host") or ticket.get("ftp_server") or ""
+    user = ticket.get("ftp_user") or ""
+    pw = ticket.get("ftp_pass") or ""
+    port = int(ticket.get("ftp_port") or ticket.get("sftp_port") or 22)
+    if not host or not user or not pw:
+        raise ValueError("Ticket hat keine vollständigen SFTP Zugangsdaten (host/user/pass).")
+    return host, user, pw, port
+
+def start_run(ticket_id: int, kind: str, root_path: Optional[str] = None, actor_user_id: Optional[int] = None) -> RepairRun:
+    run = RepairRun(ticket_id=ticket_id, kind=kind, root_path=root_path, actor_user_id=actor_user_id, status="running")
+    db.session.add(run)
+    db.session.commit()
+    return run
+
+def finish_run(run: RepairRun, status: str, summary: Optional[Dict[str, Any]] = None) -> None:
+    run.status = status
+    run.finished_at = dt.datetime.utcnow()
+    run.summary_json = summary or None
+    db.session.commit()
+
+def log_action(run_id: int, ticket_id: int, action_key: str, status: str, message: str = "", details: Optional[Dict[str, Any]] = None) -> None:
+    row = RepairActionLog(
+        run_id=run_id, ticket_id=ticket_id, action_key=action_key,
+        status=status, message=message, details_json=details or None
+    )
+    db.session.add(row)
+    db.session.commit()
+
+def add_artifact(run_id: int, ticket_id: int, type_: str, path: str, content: Optional[bytes] = None, meta: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    sha = None
+    size = None
+    if content is not None:
+        sha = _sha256_bytes(content)
+        size = len(content)
+    row = RepairArtifact(run_id=run_id, ticket_id=ticket_id, type=type_, path=path, sha256=sha, size=size, meta_json=meta or None)
+    db.session.add(row)
+    db.session.commit()
+    return {"id": row.id, "type": type_, "path": path, "sha256": sha, "size": size}
+
+# ---- Core service calls used by frontend ----
+
+def sftp_connect(ticket_id: int, ticket: Dict[str, Any]) -> Dict[str, Any]:
+    host, user, pw, port = _ticket_access(ticket)
+    # Validate credentials by real connect
+    client, sftp = connect_sftp(SftpCreds(host=host, username=user, password=pw, port=port))
+    # store only creds; open connection per request (simple & robust)
+    sftp.close()
+    client.close()
+    sid = store.create({"host": host, "user": user, "pass": pw, "port": port}, ttl_seconds=1800)
+    return {"sftp_session_id": sid, "expires_in": 1800}
+
+def sftp_projects(session_id: str) -> Dict[str, Any]:
+    s = store.get(session_id)
+    if not s:
+        return {"error": "Session ungültig oder abgelaufen."}
+    creds = SftpCreds(host=s.data["host"], username=s.data["user"], password=s.data["pass"], port=s.data.get("port", 22))
+    client, sftp = connect_sftp(creds)
+    try:
+        items = find_wp_roots(sftp, start="/", max_depth=7)
+        return {"items": items}
+    finally:
+        sftp.close()
+        client.close()
+
+def sftp_ls_path(session_id: str, path: str) -> Dict[str, Any]:
+    s = store.get(session_id)
+    if not s:
+        return {"error": "Session ungültig oder abgelaufen."}
+    creds = SftpCreds(host=s.data["host"], username=s.data["user"], password=s.data["pass"], port=s.data.get("port", 22))
+    client, sftp = connect_sftp(creds)
+    try:
+        items = sftp_ls(sftp, path or "/")
+        return {"items": items}
+    finally:
+        sftp.close()
+        client.close()
+
+def set_root(ticket_id: int, root_path: str) -> Dict[str, Any]:
+    # Minimal: speichere root_path in letzter RepairRun summary oder Setting/Meta.
+    # Empfohlen: eigenes TicketMeta Feld. Für jetzt: create a run entry "set_root".
+    run = start_run(ticket_id, kind="set_root", root_path=root_path)
+    log_action(run.id, ticket_id, "set_root", "ok", "Root gesetzt", {"root_path": root_path})
+    finish_run(run, "success", {"root_path": root_path})
+    return {"ok": True, "root_path": root_path, "run_id": run.id}
+
+# ---- Diagnose (minimal stub) ----
+def diagnose(ticket_id: int) -> Dict[str, Any]:
+    run = start_run(ticket_id, kind="diagnose")
+    try:
+        # TODO: echte Diagnose später (HTTP, WP detection, core hash etc.)
+        result = {
+            "triage": {"frontend": "unknown", "login": "unknown", "admin": "unknown"},
+            "inventory": {"wp_detected": None, "wp_version": None, "plugins": []},
+            "suspected_cause": "TBD",
+            "run_id": run.id,
+        }
+        log_action(run.id, ticket_id, "diagnose", "ok", "Diagnose (stub)", result)
+        finish_run(run, "success", {"note": "stub"})
+        return result
+    except Exception as e:
+        log_action(run.id, ticket_id, "diagnose", "fail", str(e))
+        finish_run(run, "failed", {"error": str(e)})
+        return {"error": str(e), "run_id": run.id}
+
+# ---- Fixes (minimal: audit + artifact stub) ----
+def fix_htaccess(ticket_id: int) -> Dict[str, Any]:
+    run = start_run(ticket_id, kind="fix")
+    try:
+        # TODO: echte Umsetzung mit SFTP + root_path + backup
+        payload = {"ok": True, "note": "htaccess fix stub", "run_id": run.id}
+        log_action(run.id, ticket_id, "fix_htaccess", "ok", "Stub", payload)
+        finish_run(run, "success", {"action": "fix_htaccess"})
+        return payload
+    except Exception as e:
+        log_action(run.id, ticket_id, "fix_htaccess", "fail", str(e))
+        finish_run(run, "failed", {"error": str(e)})
+        return {"error": str(e), "run_id": run.id}
+
+def fix_dropins(ticket_id: int) -> Dict[str, Any]:
+    run = start_run(ticket_id, kind="fix")
+    try:
+        payload = {"ok": True, "note": "dropins fix stub", "run_id": run.id}
+        log_action(run.id, ticket_id, "fix_dropins", "ok", "Stub", payload)
+        finish_run(run, "success", {"action": "fix_dropins"})
+        return payload
+    except Exception as e:
+        log_action(run.id, ticket_id, "fix_dropins", "fail", str(e))
+        finish_run(run, "failed", {"error": str(e)})
+        return {"error": str(e), "run_id": run.id}
+
+def fix_permissions(ticket_id: int, dry_run: bool = True) -> Dict[str, Any]:
+    run = start_run(ticket_id, kind="fix")
+    try:
+        payload = {"ok": True, "dry_run": dry_run, "note": "permissions stub", "run_id": run.id}
+        log_action(run.id, ticket_id, "fix_permissions", "ok", "Stub", payload)
+        finish_run(run, "success", {"action": "fix_permissions", "dry_run": dry_run})
+        return payload
+    except Exception as e:
+        log_action(run.id, ticket_id, "fix_permissions", "fail", str(e))
+        finish_run(run, "failed", {"error": str(e)})
+        return {"error": str(e), "run_id": run.id}
+
+def fix_maintenance(ticket_id: int) -> Dict[str, Any]:
+    run = start_run(ticket_id, kind="fix")
+    try:
+        payload = {"ok": True, "note": "maintenance stub", "run_id": run.id}
+        log_action(run.id, ticket_id, "fix_maintenance", "ok", "Stub", payload)
+        finish_run(run, "success", {"action": "fix_maintenance"})
+        return payload
+    except Exception as e:
+        log_action(run.id, ticket_id, "fix_maintenance", "fail", str(e))
+        finish_run(run, "failed", {"error": str(e)})
+        return {"error": str(e), "run_id": run.id}
+
+# ---- Audit endpoints helpers ----
+def list_runs(ticket_id: int) -> Dict[str, Any]:
+    rows = (RepairRun.query.filter_by(ticket_id=ticket_id).order_by(RepairRun.started_at.desc()).limit(50).all())
+    return {"items": [{
+        "id": r.id,
+        "ticket_id": r.ticket_id,
+        "kind": r.kind,
+        "status": r.status,
+        "root_path": r.root_path,
+        "started_at": r.started_at.isoformat() if r.started_at else None,
+        "finished_at": r.finished_at.isoformat() if r.finished_at else None,
+        "summary": r.summary_json,
+    } for r in rows]}
+
+def run_detail(run_id: int) -> Dict[str, Any]:
+    r = RepairRun.query.get(run_id)
+    if not r:
+        return {"error": "Run nicht gefunden"}
+    actions = (RepairActionLog.query.filter_by(run_id=run_id).order_by(RepairActionLog.created_at.asc()).all())
+    arts = (RepairArtifact.query.filter_by(run_id=run_id).order_by(RepairArtifact.created_at.asc()).all())
+    return {
+        "run": {
+            "id": r.id, "ticket_id": r.ticket_id, "kind": r.kind, "status": r.status,
+            "root_path": r.root_path,
+            "started_at": r.started_at.isoformat() if r.started_at else None,
+            "finished_at": r.finished_at.isoformat() if r.finished_at else None,
+            "summary": r.summary_json,
+        },
+        "actions": [{
+            "id": a.id, "action_key": a.action_key, "status": a.status, "message": a.message,
+            "details": a.details_json, "created_at": a.created_at.isoformat() if a.created_at else None
+        } for a in actions],
+        "artifacts": [{
+            "id": x.id, "type": x.type, "path": x.path, "sha256": x.sha256, "size": x.size,
+            "meta": x.meta_json, "created_at": x.created_at.isoformat() if x.created_at else None
+        } for x in arts]
+    }
+
+
+===== FILE: wp_repair/http_probe.py =====
+
+# /var/www/sitefixer/backend/app/modules/wp-repair/http_probe.py
+from __future__ import annotations
+
+import time
+from dataclasses import dataclass, asdict
+from typing import Any, Dict, List, Optional
+from urllib.parse import urljoin
+
+# Prefer requests, fallback to urllib if not installed
+try:
+    import requests  # type: ignore
+except Exception:  # pragma: no cover
+    requests = None  # type: ignore
+
+import ssl
+import urllib.request
+import urllib.error
+
+
+DEFAULT_PATHS = {
+    "frontend": "/",
+    "login": "/wp-login.php",
+    "admin": "/wp-admin/",
+    "ajax": "/wp-admin/admin-ajax.php",
+}
+
+
+@dataclass
+class Hop:
+    url: str
+    status: int
+    location: Optional[str] = None
+
+
+@dataclass
+class ProbeResult:
+    ok: bool
+    final_url: str
+    status: int
+    hops: List[Hop]
+    elapsed_ms: int
+    error: Optional[str] = None
+    snippet: Optional[str] = None
+    headers: Optional[Dict[str, str]] = None
+
+
+def _normalize_base_url(base_url: str) -> str:
+    base = base_url.strip()
+    if not base:
+        return base
+    if not base.startswith(("http://", "https://")):
+        base = "https://" + base
+    # ensure trailing slash for urljoin behavior
+    if not base.endswith("/"):
+        base += "/"
+    return base
+
+
+def _truncate_html(text: str, limit: int = 60_000) -> str:
+    if not text:
+        return ""
+    return text[:limit]
+
+
+def _probe_with_requests(
+    url: str,
+    timeout: float,
+    max_redirects: int,
+    verify_ssl: bool,
+    user_agent: str,
+    capture_snippet: bool,
+) -> ProbeResult:
+    assert requests is not None
+
+    sess = requests.Session()
+    sess.max_redirects = max_redirects
+
+    headers = {"User-Agent": user_agent, "Accept": "text/html,application/xhtml+xml,*/*;q=0.8"}
+    t0 = time.time()
+    hops: List[Hop] = []
+
+    try:
+        # We want hop visibility -> manual redirect loop
+        cur = url
+        for _ in range(max_redirects + 1):
+            resp = sess.get(
+                cur,
+                headers=headers,
+                timeout=timeout,
+                allow_redirects=False,
+                verify=verify_ssl,
+            )
+            loc = resp.headers.get("Location")
+            hops.append(Hop(url=cur, status=resp.status_code, location=loc))
+
+            # Redirect?
+            if resp.status_code in (301, 302, 303, 307, 308) and loc:
+                cur = urljoin(cur, loc)
+                continue
+
+            elapsed = int((time.time() - t0) * 1000)
+            snippet = None
+            if capture_snippet:
+                ctype = (resp.headers.get("Content-Type") or "").lower()
+                if "text/html" in ctype or "text/plain" in ctype or ctype == "":
+                    snippet = _truncate_html(resp.text or "")
+            # Normalize headers to str:str
+            hdrs = {str(k): str(v) for k, v in resp.headers.items()}
+            return ProbeResult(
+                ok=True,
+                final_url=cur,
+                status=resp.status_code,
+                hops=hops,
+                elapsed_ms=elapsed,
+                snippet=snippet,
+                headers=hdrs,
+            )
+
+        elapsed = int((time.time() - t0) * 1000)
+        return ProbeResult(
+            ok=False,
+            final_url=hops[-1].url if hops else url,
+            status=hops[-1].status if hops else 0,
+            hops=hops,
+            elapsed_ms=elapsed,
+            error="Too many redirects",
+        )
+    except Exception as e:
+        elapsed = int((time.time() - t0) * 1000)
+        status = hops[-1].status if hops else 0
+        final_url = hops[-1].url if hops else url
+        return ProbeResult(
+            ok=False,
+            final_url=final_url,
+            status=status,
+            hops=hops,
+            elapsed_ms=elapsed,
+            error=f"{type(e).__name__}: {e}",
+        )
+
+
+def _probe_with_urllib(
+    url: str,
+    timeout: float,
+    max_redirects: int,
+    verify_ssl: bool,
+    user_agent: str,
+    capture_snippet: bool,
+) -> ProbeResult:
+    t0 = time.time()
+    hops: List[Hop] = []
+
+    # urllib auto-follows redirects by default; we need hop visibility.
+    class NoRedirect(urllib.request.HTTPRedirectHandler):
+        def redirect_request(self, req, fp, code, msg, hdrs, newurl):
+            return None
+
+    ctx = None
+    if not verify_ssl:
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+
+    opener = urllib.request.build_opener(NoRedirect())
+    cur = url
+
+    try:
+        for _ in range(max_redirects + 1):
+            req = urllib.request.Request(cur, headers={"User-Agent": user_agent})
+            try:
+                resp = opener.open(req, timeout=timeout, context=ctx)
+                code = getattr(resp, "status", 200) or 200
+                hdrs = dict(resp.headers.items())
+                loc = hdrs.get("Location")
+                hops.append(Hop(url=cur, status=int(code), location=loc))
+
+                elapsed = int((time.time() - t0) * 1000)
+                snippet = None
+                if capture_snippet:
+                    ctype = (hdrs.get("Content-Type") or "").lower()
+                    if "text/html" in ctype or "text/plain" in ctype or ctype == "":
+                        raw = resp.read(60_000)
+                        snippet = raw.decode("utf-8", errors="replace")
+                return ProbeResult(
+                    ok=True,
+                    final_url=cur,
+                    status=int(code),
+                    hops=hops,
+                    elapsed_ms=elapsed,
+                    snippet=snippet,
+                    headers={str(k): str(v) for k, v in hdrs.items()},
+                )
+            except urllib.error.HTTPError as e:
+                hdrs = dict(e.headers.items()) if e.headers else {}
+                loc = hdrs.get("Location")
+                hops.append(Hop(url=cur, status=int(e.code), location=loc))
+
+                # Redirect?
+                if int(e.code) in (301, 302, 303, 307, 308) and loc:
+                    cur = urljoin(cur, loc)
+                    continue
+
+                elapsed = int((time.time() - t0) * 1000)
+                snippet = None
+                if capture_snippet:
+                    try:
+                        raw = e.read(60_000)
+                        snippet = raw.decode("utf-8", errors="replace")
+                    except Exception:
+                        snippet = None
+                return ProbeResult(
+                    ok=True,
+                    final_url=cur,
+                    status=int(e.code),
+                    hops=hops,
+                    elapsed_ms=elapsed,
+                    snippet=snippet,
+                    headers={str(k): str(v) for k, v in hdrs.items()},
+                )
+
+        elapsed = int((time.time() - t0) * 1000)
+        return ProbeResult(
+            ok=False,
+            final_url=hops[-1].url if hops else url,
+            status=hops[-1].status if hops else 0,
+            hops=hops,
+            elapsed_ms=elapsed,
+            error="Too many redirects",
+        )
+    except Exception as e:
+        elapsed = int((time.time() - t0) * 1000)
+        status = hops[-1].status if hops else 0
+        final_url = hops[-1].url if hops else url
+        return ProbeResult(
+            ok=False,
+            final_url=final_url,
+            status=status,
+            hops=hops,
+            elapsed_ms=elapsed,
+            error=f"{type(e).__name__}: {e}",
+        )
+
+
+def probe_url(
+    url: str,
+    *,
+    timeout: float = 8.0,
+    max_redirects: int = 8,
+    verify_ssl: bool = True,
+    user_agent: str = "Sitefixer-WPRepair/1.0",
+    capture_snippet: bool = True,
+) -> Dict[str, Any]:
+    """
+    Probes a single URL and returns a serializable dict.
+    """
+    if requests is not None:
+        res = _probe_with_requests(url, timeout, max_redirects, verify_ssl, user_agent, capture_snippet)
+    else:
+        res = _probe_with_urllib(url, timeout, max_redirects, verify_ssl, user_agent, capture_snippet)
+
+    d = asdict(res)
+    # dataclass Hop -> dict already via asdict
+    return d
+
+
+def probe_site(
+    base_url: str,
+    *,
+    paths: Optional[Dict[str, str]] = None,
+    timeout: float = 8.0,
+    max_redirects: int = 8,
+    verify_ssl: bool = True,
+    capture_snippet: bool = True,
+) -> Dict[str, Any]:
+    """
+    Probes typical WP endpoints:
+      - frontend: /
+      - login: /wp-login.php
+      - admin: /wp-admin/
+      - ajax: /wp-admin/admin-ajax.php
+    """
+    base = _normalize_base_url(base_url)
+    paths = paths or DEFAULT_PATHS
+
+    results: Dict[str, Any] = {
+        "base_url": base,
+        "targets": {},
+        "ok": True,
+        "errors": [],
+    }
+
+    if not base:
+        results["ok"] = False
+        results["errors"].append("base_url is empty")
+        return results
+
+    for key, p in paths.items():
+        url = urljoin(base, p.lstrip("/"))
+        r = probe_url(
+            url,
+            timeout=timeout,
+            max_redirects=max_redirects,
+            verify_ssl=verify_ssl,
+            capture_snippet=capture_snippet,
+        )
+        results["targets"][key] = r
+        if not r.get("ok", False):
+            results["ok"] = False
+
+    return results
+
+
+===== FILE: wp_repair/audit.py =====
+
+# /var/www/sitefixer/backend/app/modules/wp-repair/audit.py
+from __future__ import annotations
+
+import json
+import os
+import time
+from dataclasses import dataclass, asdict
+from pathlib import Path
+from typing import Any, Dict, Optional
+
+
+DEFAULT_AUDIT_DIR = os.getenv("WP_REPAIR_AUDIT_DIR", "/var/www/sitefixer/core-cache/repair-audit")
+DEFAULT_AUDIT_FILE = os.getenv("WP_REPAIR_AUDIT_FILE", "wp-repair-audit.jsonl")
+
+
+def _safe_realpath(p: str) -> Path:
+    return Path(p).expanduser().resolve(strict=False)
+
+
+def _ensure_dir(p: Path) -> None:
+    p.mkdir(parents=True, exist_ok=True)
+
+
+def _now_ts() -> int:
+    return int(time.time())
+
+
+@dataclass
+class AuditEvent:
+    ts: int
+    actor: str  # user id / username / system
+    root_path: str
+    action_id: str
+    status: str  # "started"|"success"|"failed"
+    message: str
+    params: Dict[str, Any]
+    result: Optional[Dict[str, Any]] = None
+    backup: Optional[Dict[str, Any]] = None
+    meta: Optional[Dict[str, Any]] = None
+
+
+def _audit_path() -> Path:
+    base = _safe_realpath(DEFAULT_AUDIT_DIR)
+    _ensure_dir(base)
+    return base / DEFAULT_AUDIT_FILE
+
+
+def write_event(event: AuditEvent) -> Dict[str, Any]:
+    """
+    Append-only JSONL.
+    Returns {ok, path, bytes_written}
+    """
+    path = _audit_path()
+    line = json.dumps(asdict(event), ensure_ascii=False)
+    try:
+        with path.open("a", encoding="utf-8") as f:
+            f.write(line + "\n")
+        return {"ok": True, "path": str(path), "bytes_written": len(line) + 1}
+    except Exception as e:
+        return {"ok": False, "path": str(path), "error": f"{type(e).__name__}: {e}"}
+
+
+def audit_started(
+    *,
+    actor: str,
+    root_path: str,
+    action_id: str,
+    params: Dict[str, Any],
+    message: str = "Action started",
+    backup: Optional[Dict[str, Any]] = None,
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    return write_event(
+        AuditEvent(
+            ts=_now_ts(),
+            actor=actor or "system",
+            root_path=root_path,
+            action_id=action_id,
+            status="started",
+            message=message,
+            params=params or {},
+            backup=backup,
+            meta=meta,
+        )
+    )
+
+
+def audit_success(
+    *,
+    actor: str,
+    root_path: str,
+    action_id: str,
+    params: Dict[str, Any],
+    result: Optional[Dict[str, Any]] = None,
+    message: str = "Action success",
+    backup: Optional[Dict[str, Any]] = None,
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    return write_event(
+        AuditEvent(
+            ts=_now_ts(),
+            actor=actor or "system",
+            root_path=root_path,
+            action_id=action_id,
+            status="success",
+            message=message,
+            params=params or {},
+            result=result,
+            backup=backup,
+            meta=meta,
+        )
+    )
+
+
+def audit_failed(
+    *,
+    actor: str,
+    root_path: str,
+    action_id: str,
+    params: Dict[str, Any],
+    error: str,
+    result: Optional[Dict[str, Any]] = None,
+    message: str = "Action failed",
+    backup: Optional[Dict[str, Any]] = None,
+    meta: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    return write_event(
+        AuditEvent(
+            ts=_now_ts(),
+            actor=actor or "system",
+            root_path=root_path,
+            action_id=action_id,
+            status="failed",
+            message=f"{message}: {error}",
+            params=params or {},
+            result=result,
+            backup=backup,
+            meta=meta,
+        )
+    )
+
+
+===== FILE: wp_repair/inventory_sftp.py =====
+
+from __future__ import annotations
+
+import re
+from typing import Any, Dict, List, Optional
+
+import paramiko
+
+# Wir nutzen deine vorhandenen SFTP-Helper aus repair_beta (sind bei dir vorhanden)
+from app.modules.repair_beta.sftp_client import exists as sftp_exists
+from app.modules.repair_beta.sftp_client import read_text as sftp_read_text
+from app.modules.repair_beta.sftp_client import listdir as sftp_listdir
+
+
+_MAX_READ_BYTES = 512_000
+
+
+def _is_wp_root(sftp: paramiko.SFTPClient, root: str) -> bool:
+    root = root.rstrip("/") or "/"
+    return sftp_exists(sftp, f"{root}/wp-config.php") and sftp_exists(sftp, f"{root}/wp-settings.php")
+
+
+def _read_wp_version(sftp: paramiko.SFTPClient, root: str) -> Optional[str]:
+    root = root.rstrip("/") or "/"
+    p = f"{root}/wp-includes/version.php"
+    if not sftp_exists(sftp, p):
+        return None
+    txt = sftp_read_text(sftp, p, max_bytes=120_000)  # repair_beta helper unterstützt max_bytes
+    m = re.search(r"\$wp_version\s*=\s*'([^']+)'\s*;", txt)
+    return m.group(1).strip() if m else None
+
+
+def _parse_header_value(text: str, header: str) -> Optional[str]:
+    m = re.search(rf"^{re.escape(header)}\s*:\s*(.+)$", text, re.MULTILINE | re.IGNORECASE)
+    return m.group(1).strip() if m else None
+
+
+def _list_plugin_slugs(sftp: paramiko.SFTPClient, wp_root: str) -> List[str]:
+    plugins_dir = f"{wp_root.rstrip('/')}/wp-content/plugins"
+    if not sftp_exists(sftp, plugins_dir):
+        return []
+    out: List[str] = []
+    for name in sftp_listdir(sftp, plugins_dir):
+        if name.startswith("."):
+            continue
+        out.append(name)
+    return sorted(out)
+
+
+def _list_theme_slugs(sftp: paramiko.SFTPClient, wp_root: str) -> List[str]:
+    themes_dir = f"{wp_root.rstrip('/')}/wp-content/themes"
+    if not sftp_exists(sftp, themes_dir):
+        return []
+    out: List[str] = []
+    for name in sftp_listdir(sftp, themes_dir):
+        if name.startswith("."):
+            continue
+        out.append(name)
+    return sorted(out)
+
+
+def build_inventory_sftp(
+    *,
+    sftp: paramiko.SFTPClient,
+    wp_root: str,
+) -> Dict[str, Any]:
+    wp_root = wp_root.rstrip("/") or "/"
+
+    result: Dict[str, Any] = {
+        "ok": True,
+        "wp_root": wp_root,
+        "wp_detected": _is_wp_root(sftp, wp_root),
+        "wp_version": None,
+        "plugins": [],
+        "themes": [],
+        "errors": [],
+    }
+
+    if not result["wp_detected"]:
+        result["errors"].append("WordPress root not detected via SFTP (missing wp-config.php/wp-settings.php).")
+        return result
+
+    result["wp_version"] = _read_wp_version(sftp, wp_root)
+    result["plugins"] = _list_plugin_slugs(sftp, wp_root)
+    result["themes"] = _list_theme_slugs(sftp, wp_root)
+
+    return result
+
+
+===== FILE: wp_repair/inventory.py =====
+
+from __future__ import annotations
+
+import os
+import re
+import posixpath
+from dataclasses import dataclass, asdict
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple, Iterable
+
+
+_MAX_READ_BYTES = 512_000  # hard cap per file read
+
+
+# ============================================================
+# Filesystem Abstraction
+# ============================================================
+
+class FSBase:
+    """Minimal filesystem interface used by inventory."""
+    sep: str = "/"
+
+    def abspath(self, p: str) -> str:
+        raise NotImplementedError
+
+    def isabs(self, p: str) -> bool:
+        raise NotImplementedError
+
+    def exists(self, p: str) -> bool:
+        raise NotImplementedError
+
+    def is_file(self, p: str) -> bool:
+        raise NotImplementedError
+
+    def is_dir(self, p: str) -> bool:
+        raise NotImplementedError
+
+    def read_bytes(self, p: str, max_bytes: int) -> bytes:
+        raise NotImplementedError
+
+    def iterdir(self, p: str) -> List[str]:
+        """Return full paths of direct children."""
+        raise NotImplementedError
+
+    def glob(self, p: str, pattern: str) -> List[str]:
+        """Non-recursive glob inside directory p (pattern like '*.php')."""
+        raise NotImplementedError
+
+    def rglob(self, p: str, pattern: str, max_results: int = 25) -> List[str]:
+        """Recursive glob with a hard stop."""
+        raise NotImplementedError
+
+    def join(self, *parts: str) -> str:
+        raise NotImplementedError
+
+    def relpath(self, child: str, parent: str) -> str:
+        raise NotImplementedError
+
+
+class LocalFS(FSBase):
+    sep = os.sep
+
+    def abspath(self, p: str) -> str:
+        return str(Path(p).expanduser().resolve(strict=False))
+
+    def isabs(self, p: str) -> bool:
+        return Path(p).is_absolute()
+
+    def exists(self, p: str) -> bool:
+        return Path(p).exists()
+
+    def is_file(self, p: str) -> bool:
+        return Path(p).is_file()
+
+    def is_dir(self, p: str) -> bool:
+        return Path(p).is_dir()
+
+    def read_bytes(self, p: str, max_bytes: int) -> bytes:
+        path = Path(p)
+        if not path.exists() or not path.is_file():
+            return b""
+        return path.read_bytes()[:max_bytes]
+
+    def iterdir(self, p: str) -> List[str]:
+        path = Path(p)
+        if not path.exists() or not path.is_dir():
+            return []
+        return [str(x) for x in path.iterdir()]
+
+    def glob(self, p: str, pattern: str) -> List[str]:
+        path = Path(p)
+        if not path.exists() or not path.is_dir():
+            return []
+        return [str(x) for x in path.glob(pattern)]
+
+    def rglob(self, p: str, pattern: str, max_results: int = 25) -> List[str]:
+        path = Path(p)
+        if not path.exists() or not path.is_dir():
+            return []
+        out = []
+        for x in path.rglob(pattern):
+            out.append(str(x))
+            if len(out) >= max_results:
+                break
+        return out
+
+    def join(self, *parts: str) -> str:
+        return str(Path(*parts))
+
+    def relpath(self, child: str, parent: str) -> str:
+        try:
+            return str(Path(child).resolve(strict=False).relative_to(Path(parent).resolve(strict=False)))
+        except Exception:
+            return child
+
+
+class SftpFS(FSBase):
+    """
+    Wrap a Paramiko-like SFTP client.
+
+    Required methods on sftp:
+      - stat(path)
+      - listdir(path)
+      - listdir_attr(path) (optional; we don't require)
+      - open(path, 'rb')
+    """
+    sep = "/"
+
+    def __init__(self, sftp):
+        self.sftp = sftp
+
+    def abspath(self, p: str) -> str:
+        # normalize remote posix path
+        if not p:
+            return "/"
+        if not p.startswith("/"):
+            # treat as relative -> make absolute from /
+            p = "/" + p
+        return posixpath.normpath(p)
+
+    def isabs(self, p: str) -> bool:
+        return p.startswith("/")
+
+    def exists(self, p: str) -> bool:
+        p = self.abspath(p)
+        try:
+            self.sftp.stat(p)
+            return True
+        except Exception:
+            return False
+
+    def is_file(self, p: str) -> bool:
+        p = self.abspath(p)
+        try:
+            st = self.sftp.stat(p)
+            # paramiko: st_mode available
+            import stat
+            return stat.S_ISREG(st.st_mode)
+        except Exception:
+            return False
+
+    def is_dir(self, p: str) -> bool:
+        p = self.abspath(p)
+        try:
+            st = self.sftp.stat(p)
+            import stat
+            return stat.S_ISDIR(st.st_mode)
+        except Exception:
+            return False
+
+    def read_bytes(self, p: str, max_bytes: int) -> bytes:
+        p = self.abspath(p)
+        try:
+            with self.sftp.open(p, "rb") as f:
+                return f.read(max_bytes)
+        except Exception:
+            return b""
+
+    def iterdir(self, p: str) -> List[str]:
+        p = self.abspath(p)
+        if not self.is_dir(p):
+            return []
+        try:
+            names = self.sftp.listdir(p)
+            return [self.join(p, n) for n in names if n not in (".", "..")]
+        except Exception:
+            return []
+
+    def glob(self, p: str, pattern: str) -> List[str]:
+        # simple fnmatch in one dir
+        import fnmatch
+        out = []
+        for child in self.iterdir(p):
+            name = child.split("/")[-1]
+            if fnmatch.fnmatch(name, pattern):
+                out.append(child)
+        return out
+
+    def rglob(self, p: str, pattern: str, max_results: int = 25) -> List[str]:
+        import fnmatch
+        out: List[str] = []
+        stack = [self.abspath(p)]
+        while stack and len(out) < max_results:
+            cur = stack.pop()
+            if not self.is_dir(cur):
+                continue
+            for child in self.iterdir(cur):
+                if len(out) >= max_results:
+                    break
+                name = child.split("/")[-1]
+                if self.is_dir(child):
+                    stack.append(child)
+                else:
+                    if fnmatch.fnmatch(name, pattern):
+                        out.append(child)
+        return out
+
+    def join(self, *parts: str) -> str:
+        parts2 = []
+        for i, x in enumerate(parts):
+            if i == 0:
+                parts2.append(x.rstrip("/"))
+            else:
+                parts2.append(x.strip("/"))
+        return posixpath.normpath("/".join(parts2)) or "/"
+
+    def relpath(self, child: str, parent: str) -> str:
+        child = self.abspath(child)
+        parent = self.abspath(parent)
+        if child.startswith(parent.rstrip("/") + "/"):
+            return child[len(parent.rstrip("/")) + 1 :]
+        return child
+
+
+# ============================================================
+# Helpers
+# ============================================================
+
+def _read_text(fs: FSBase, path: str, max_bytes: int = _MAX_READ_BYTES) -> str:
+    data = fs.read_bytes(path, max_bytes=max_bytes)
+    if not data:
+        return ""
+    try:
+        return data.decode("utf-8", errors="replace")
+    except Exception:
+        return data.decode(errors="replace")
+
+
+def _parse_php_define(text: str, key: str) -> Optional[str]:
+    m = re.search(rf"define\(\s*['\"]{re.escape(key)}['\"]\s*,\s*['\"]([^'\"]*)['\"]\s*\)", text)
+    return m.group(1).strip() if m else None
+
+
+def _parse_table_prefix(text: str) -> Optional[str]:
+    m = re.search(r"^\s*\$table_prefix\s*=\s*['\"]([^'\"]+)['\"]\s*;", text, re.MULTILINE)
+    return m.group(1).strip() if m else None
+
+
+def _parse_wp_debug_flags(text: str) -> Dict[str, Optional[str]]:
+    keys = ["WP_DEBUG", "WP_DEBUG_LOG", "WP_DEBUG_DISPLAY"]
+    return {k: _parse_php_define(text, k) for k in keys}
+
+
+def _parse_header_value(text: str, header: str) -> Optional[str]:
+    pattern = rf"^{re.escape(header)}\s*:\s*(.+)$"
+    m = re.search(pattern, text, re.MULTILINE | re.IGNORECASE)
+    return m.group(1).strip() if m else None
+
+
+def _is_wordpress_root(fs: FSBase, root: str) -> bool:
+    return fs.exists(fs.join(root, "wp-config.php")) and fs.exists(fs.join(root, "wp-settings.php"))
+
+
+def _read_wordpress_version(fs: FSBase, root: str) -> Optional[str]:
+    vfile = fs.join(root, "wp-includes", "version.php")
+    txt = _read_text(fs, vfile, max_bytes=120_000)
+    m = re.search(r"\$wp_version\s*=\s*'([^']+)'\s*;", txt)
+    return m.group(1).strip() if m else None
+
+
+def _detect_wp_content_dir(fs: FSBase, root: str) -> str:
+    return fs.join(root, "wp-content")
+
+
+def _path_clamp(fs: FSBase, root_path: str) -> Tuple[bool, str, str]:
+    """
+    Clamp for BOTH local and SFTP paths.
+    - Must be absolute
+    - If REPAIR_ALLOWED_ROOTS set (comma-separated), must be within one of them
+      (for SFTP: prefix match on normalized posix paths)
+    """
+    root = fs.abspath(root_path)
+    if not fs.isabs(root):
+        return False, "root_path must be an absolute path", root
+
+    allowed = os.getenv("REPAIR_ALLOWED_ROOTS", "").strip()
+    if not allowed:
+        return True, "", root
+
+    allowed_roots = [fs.abspath(x.strip()) for x in allowed.split(",") if x.strip()]
+    for ar in allowed_roots:
+        # within check: prefix match with boundary
+        ar2 = ar.rstrip("/")
+        if root == ar2 or root.startswith(ar2 + "/"):
+            return True, "", root
+
+    return False, "root_path not allowed (outside REPAIR_ALLOWED_ROOTS)", root
+
+
+# ============================================================
+# Data structures
+# ============================================================
+
+@dataclass
+class PluginInfo:
+    slug: str
+    name: Optional[str]
+    version: Optional[str]
+    author: Optional[str]
+    plugin_uri: Optional[str]
+    main_file: str
+    kind: str  # "folder" | "single-file"
+    path: str
+
+
+@dataclass
+class ThemeInfo:
+    slug: str
+    name: Optional[str]
+    version: Optional[str]
+    author: Optional[str]
+    theme_uri: Optional[str]
+    template: Optional[str]
+    status: str  # "child" | "parent" | "unknown"
+    style_css: str
+    path: str
+
+
+# ============================================================
+# Inventory core (FS-based)
+# ============================================================
+
+def read_wp_config(fs: FSBase, root: str, redact_secrets: bool = True) -> Dict[str, Any]:
+    cfg = fs.join(root, "wp-config.php")
+    txt = _read_text(fs, cfg, max_bytes=256_000)
+    if not txt:
+        return {"found": False}
+
+    db_name = _parse_php_define(txt, "DB_NAME")
+    db_user = _parse_php_define(txt, "DB_USER")
+    db_pass = _parse_php_define(txt, "DB_PASSWORD")
+    db_host = _parse_php_define(txt, "DB_HOST")
+    charset = _parse_php_define(txt, "DB_CHARSET")
+    collate = _parse_php_define(txt, "DB_COLLATE")
+
+    return {
+        "found": True,
+        "table_prefix": _parse_table_prefix(txt),
+        "db": {
+            "name": db_name,
+            "user": db_user,
+            "password": ("***" if (redact_secrets and db_pass) else db_pass),
+            "host": db_host,
+            "charset": charset,
+            "collate": collate,
+        },
+        "debug": _parse_wp_debug_flags(txt),
+    }
+
+
+def _find_plugin_main_file_in_folder(fs: FSBase, folder: str) -> Optional[str]:
+    slug = folder.rstrip("/").split("/")[-1]
+    candidate = fs.join(folder, f"{slug}.php")
+    if fs.exists(candidate):
+        return candidate
+
+    php_files = fs.glob(folder, "*.php")
+    for f in php_files:
+        head = _read_text(fs, f, max_bytes=32_000)
+        if re.search(r"^\s*Plugin Name\s*:\s*.+$", head, re.MULTILINE | re.IGNORECASE):
+            return f
+
+    checked = 0
+    for f in fs.rglob(folder, "*.php", max_results=25):
+        checked += 1
+        if checked > 25:
+            break
+        head = _read_text(fs, f, max_bytes=32_000)
+        if re.search(r"^\s*Plugin Name\s*:\s*.+$", head, re.MULTILINE | re.IGNORECASE):
+            return f
+
+    return None
+
+
+def list_plugins(fs: FSBase, root: str) -> List[PluginInfo]:
+    wp_content = _detect_wp_content_dir(fs, root)
+    plugins_dir = fs.join(wp_content, "plugins")
+    out: List[PluginInfo] = []
+    if not fs.exists(plugins_dir) or not fs.is_dir(plugins_dir):
+        return out
+
+    entries = fs.iterdir(plugins_dir)
+    entries_sorted = sorted(entries, key=lambda p: p.split("/")[-1].lower())
+
+    for entry in entries_sorted:
+        name = entry.split("/")[-1]
+        if name.startswith("."):
+            continue
+
+        # Single-file plugin
+        if fs.is_file(entry) and name.lower().endswith(".php"):
+            head = _read_text(fs, entry, max_bytes=32_000)
+            out.append(
+                PluginInfo(
+                    slug=name[:-4],
+                    name=_parse_header_value(head, "Plugin Name"),
+                    version=_parse_header_value(head, "Version"),
+                    author=_parse_header_value(head, "Author"),
+                    plugin_uri=_parse_header_value(head, "Plugin URI"),
+                    main_file=fs.relpath(entry, root),
+                    kind="single-file",
+                    path=entry,
+                )
+            )
+            continue
+
+        # Folder plugin
+        if fs.is_dir(entry):
+            main = _find_plugin_main_file_in_folder(fs, entry)
+            if not main:
+                out.append(
+                    PluginInfo(
+                        slug=name,
+                        name=None,
+                        version=None,
+                        author=None,
+                        plugin_uri=None,
+                        main_file="",
+                        kind="folder",
+                        path=entry,
+                    )
+                )
+                continue
+
+            head = _read_text(fs, main, max_bytes=32_000)
+            out.append(
+                PluginInfo(
+                    slug=name,
+                    name=_parse_header_value(head, "Plugin Name"),
+                    version=_parse_header_value(head, "Version"),
+                    author=_parse_header_value(head, "Author"),
+                    plugin_uri=_parse_header_value(head, "Plugin URI"),
+                    main_file=fs.relpath(main, root),
+                    kind="folder",
+                    path=entry,
+                )
+            )
+
+    return out
+
+
+def list_mu_plugins(fs: FSBase, root: str) -> List[PluginInfo]:
+    wp_content = _detect_wp_content_dir(fs, root)
+    mu_dir = fs.join(wp_content, "mu-plugins")
+    out: List[PluginInfo] = []
+    if not fs.exists(mu_dir) or not fs.is_dir(mu_dir):
+        return out
+
+    for entry in sorted(fs.glob(mu_dir, "*.php"), key=lambda p: p.split("/")[-1].lower()):
+        head = _read_text(fs, entry, max_bytes=32_000)
+        name = entry.split("/")[-1]
+        out.append(
+            PluginInfo(
+                slug=name[:-4],
+                name=_parse_header_value(head, "Plugin Name"),
+                version=_parse_header_value(head, "Version"),
+                author=_parse_header_value(head, "Author"),
+                plugin_uri=_parse_header_value(head, "Plugin URI"),
+                main_file=fs.relpath(entry, root),
+                kind="single-file",
+                path=entry,
+            )
+        )
+    return out
+
+
+def list_themes(fs: FSBase, root: str) -> List[ThemeInfo]:
+    wp_content = _detect_wp_content_dir(fs, root)
+    themes_dir = fs.join(wp_content, "themes")
+    out: List[ThemeInfo] = []
+    if not fs.exists(themes_dir) or not fs.is_dir(themes_dir):
+        return out
+
+    theme_dirs = [p for p in fs.iterdir(themes_dir) if fs.is_dir(p)]
+    theme_dirs = sorted(theme_dirs, key=lambda p: p.split("/")[-1].lower())
+
+    for theme_dir in theme_dirs:
+        slug = theme_dir.split("/")[-1]
+        style = fs.join(theme_dir, "style.css")
+        txt = _read_text(fs, style, max_bytes=80_000)
+        name = _parse_header_value(txt, "Theme Name")
+        version = _parse_header_value(txt, "Version")
+        author = _parse_header_value(txt, "Author")
+        uri = _parse_header_value(txt, "Theme URI")
+        template = _parse_header_value(txt, "Template")
+
+        status = "child" if template else ("parent" if name else "unknown")
+
+        out.append(
+            ThemeInfo(
+                slug=slug,
+                name=name,
+                version=version,
+                author=author,
+                theme_uri=uri,
+                template=template,
+                status=status,
+                style_css=fs.relpath(style, root) if fs.exists(style) else "",
+                path=theme_dir,
+            )
+        )
+
+    return out
+
+
+def list_dropins_and_cache_flags(fs: FSBase, root: str) -> Dict[str, Any]:
+    wp_content = _detect_wp_content_dir(fs, root)
+    checks = {
+        "advanced_cache": fs.join(wp_content, "advanced-cache.php"),
+        "object_cache": fs.join(wp_content, "object-cache.php"),
+        "db_php": fs.join(wp_content, "db.php"),
+        "maintenance": fs.join(root, ".maintenance"),
+        "cache_dir": fs.join(wp_content, "cache"),
+    }
+    return {k: (p if fs.exists(p) else None) for k, p in checks.items()}
+
+
+def build_inventory(
+    root_path: str,
+    redact_secrets: bool = True,
+    fs: Optional[FSBase] = None,
+) -> Dict[str, Any]:
+    fs = fs or LocalFS()
+
+    ok, err, root = _path_clamp(fs, root_path)
+
+    result: Dict[str, Any] = {
+        "ok": ok,
+        "error": err or None,
+        "root_path": root,
+        "wp_detected": False,
+        "wp_version": None,
+        "wp_content_path": _detect_wp_content_dir(fs, root) if ok else None,
+        "wp_config": {},
+        "plugins": [],
+        "mu_plugins": [],
+        "themes": [],
+        "dropins": {},
+        "errors": [],
+        "debug_fs": {
+            "mode": fs.__class__.__name__,
+            "root_exists": fs.exists(root) if ok else None,
+            "root_is_dir": fs.is_dir(root) if ok else None,
+            "has_wp_config": fs.exists(fs.join(root, "wp-config.php")) if ok else None,
+            "has_wp_settings": fs.exists(fs.join(root, "wp-settings.php")) if ok else None,
+            "has_version_php": fs.exists(fs.join(root, "wp-includes", "version.php")) if ok else None,
+        },
+    }
+
+    if not ok:
+        return result
+
+    result["wp_detected"] = _is_wordpress_root(fs, root)
+    if not result["wp_detected"]:
+        result["errors"].append("WordPress root not detected (missing wp-config.php/wp-settings.php).")
+        return result
+
+    result["wp_version"] = _read_wordpress_version(fs, root)
+    result["wp_config"] = read_wp_config(fs, root, redact_secrets=redact_secrets)
+
+    try:
+        result["plugins"] = [asdict(p) for p in list_plugins(fs, root)]
+        result["mu_plugins"] = [asdict(p) for p in list_mu_plugins(fs, root)]
+        result["themes"] = [asdict(t) for t in list_themes(fs, root)]
+        result["dropins"] = list_dropins_and_cache_flags(fs, root)
+    except Exception as e:
+        result["errors"].append(f"Inventory scan failed: {type(e).__name__}: {e}")
+
+    return result
+
+
+===== FILE: wp_repair/log_reader_sftp.py =====
+
+# app/modules/wp_repair/log_reader_sftp.py
+from __future__ import annotations
+
+import posixpath
+import re
+from typing import Any, Dict, List, Optional
+
+# --- helpers ---
+
+def _safe_tail(text: str, tail_lines: int) -> str:
+    if tail_lines <= 0:
+        return ""
+    lines = text.splitlines()
+    return "\n".join(lines[-tail_lines:])
+
+def _redact(s: str) -> str:
+    # simple redaction: urls with creds, common secrets
+    s = re.sub(r'(?i)(password|pass|pwd)\s*=\s*([^\s&]+)', r'\1=***', s)
+    s = re.sub(r'(?i)(DB_PASSWORD|AUTH_KEY|SECURE_AUTH_KEY|LOGGED_IN_KEY|NONCE_KEY|AUTH_SALT|SECURE_AUTH_SALT|LOGGED_IN_SALT|NONCE_SALT)\s*\'[^\']+\'',
+               r"\1 '***'", s)
+    return s
+
+def _sftp_read_text(sftp, path: str, max_bytes: int = 1_000_000) -> Optional[str]:
+    try:
+        f = sftp.open(path, "r")
+        try:
+            data = f.read(max_bytes)
+            if isinstance(data, bytes):
+                return data.decode("utf-8", "replace")
+            return str(data)
+        finally:
+            f.close()
+    except Exception:
+        return None
+
+def _exists(sftp, path: str) -> bool:
+    try:
+        sftp.stat(path)
+        return True
+    except Exception:
+        return False
+
+def _summarize_entries(text: str) -> Dict[str, Any]:
+    # Minimal parser: find fatals + plugin/theme file hints
+    entries: List[Dict[str, Any]] = []
+
+    fatal_rx = re.compile(r"(?i)(fatal error|parse error|allowed memory size|error establishing a database connection)")
+    plugin_rx = re.compile(r"wp-content/plugins/([^/]+)/", re.IGNORECASE)
+    theme_rx  = re.compile(r"wp-content/themes/([^/]+)/", re.IGNORECASE)
+
+    top_plugins: Dict[str, int] = {}
+    top_themes: Dict[str, int] = {}
+
+    for line in text.splitlines():
+        msg = line.strip()
+        if not msg:
+            continue
+
+        if fatal_rx.search(msg):
+            entries.append({"level": "fatal", "message": msg})
+
+        pm = plugin_rx.search(msg)
+        if pm:
+            top_plugins[pm.group(1)] = top_plugins.get(pm.group(1), 0) + 1
+
+        tm = theme_rx.search(msg)
+        if tm:
+            top_themes[tm.group(1)] = top_themes.get(tm.group(1), 0) + 1
+
+    def _top(d: Dict[str, int], n: int) -> List[Dict[str, Any]]:
+        items = sorted(d.items(), key=lambda x: x[1], reverse=True)[:n]
+        return [{"slug": k, "hits": v} for k, v in items]
+
+    return {
+        "entries": entries[-50:],  # keep last 50 fatals
+        "summary": {
+            "top_plugins": _top(top_plugins, 5),
+            "top_themes": _top(top_themes, 3),
+        },
+    }
+
+# --- public ---
+
+def read_logs_sftp(*, sftp, wp_root: str, tail_lines: int = 300, redact: bool = True) -> Dict[str, Any]:
+    """
+    Reads common WP log locations via SFTP and returns a structure compatible with your diagnose rules:
+      { sources:[{path, ok, tail, entries:[] }], summary:{top_plugins, top_themes} }
+    """
+    wp_root = wp_root.rstrip("/") or "/"
+
+    candidates = [
+        posixpath.join(wp_root, "wp-content", "debug.log"),
+        posixpath.join(wp_root, "error_log"),
+        posixpath.join(posixpath.dirname(wp_root), "error_log"),  # sometimes one level above
+    ]
+
+    sources: List[Dict[str, Any]] = []
+    merged_text = ""
+
+    for p in candidates:
+        if not _exists(sftp, p):
+            sources.append({"path": p, "ok": False, "reason": "not_found"})
+            continue
+
+        raw = _sftp_read_text(sftp, p)
+        if raw is None:
+            sources.append({"path": p, "ok": False, "reason": "read_failed"})
+            continue
+
+        tail = _safe_tail(raw, tail_lines)
+        if redact:
+            tail = _redact(tail)
+
+        sources.append({"path": p, "ok": True, "tail": tail})
+        merged_text += "\n" + tail
+
+    summary = _summarize_entries(merged_text)
+
+    # map to your expected keys
+    return {
+        "ok": True,
+        "sources": [
+            {
+                "path": s["path"],
+                "ok": s.get("ok", False),
+                "reason": s.get("reason"),
+                # keep compatible fields
+                "entries": summary["entries"] if s.get("ok") else [],
+                "tail": s.get("tail", ""),
+            }
+            for s in sources
+        ],
+        "summary": summary["summary"],
+    }
+
+
+===== FILE: wp_repair/log_reader.py =====
+
+# /var/www/sitefixer/backend/app/modules/wp-repair/log_reader.py
+from __future__ import annotations
+
+import os
+import re
+import time
+from dataclasses import dataclass, asdict
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+
+_MAX_BYTES = 1_500_000  # total read cap per log file
+_DEFAULT_TAIL_LINES = 300
+
+
+@dataclass
+class LogEntry:
+    ts: Optional[str]
+    level: str
+    message: str
+    file: Optional[str] = None
+    line: Optional[int] = None
+    plugin_slug: Optional[str] = None
+    theme_slug: Optional[str] = None
+    raw: Optional[str] = None
+
+
+def _safe_realpath(p: str) -> Path:
+    return Path(p).expanduser().resolve(strict=False)
+
+
+def _read_tail_bytes(path: Path, max_bytes: int = _MAX_BYTES) -> bytes:
+    """
+    Efficient-ish tail: reads last max_bytes from file.
+    """
+    if not path.exists() or not path.is_file():
+        return b""
+    try:
+        size = path.stat().st_size
+        with path.open("rb") as f:
+            if size > max_bytes:
+                f.seek(size - max_bytes)
+            return f.read()
+    except Exception:
+        return b""
+
+
+def _tail_lines(path: Path, lines: int = _DEFAULT_TAIL_LINES) -> List[str]:
+    raw = _read_tail_bytes(path)
+    if not raw:
+        return []
+    text = raw.decode("utf-8", errors="replace")
+    parts = text.splitlines()
+    return parts[-lines:]
+
+
+def _detect_plugin_theme_from_path(path: str) -> Tuple[Optional[str], Optional[str]]:
+    """
+    Extract plugin/theme slug from typical WP paths.
+    """
+    # Normalize separators
+    p = path.replace("\\", "/")
+    m = re.search(r"/wp-content/plugins/([^/]+)/", p)
+    plugin = m.group(1) if m else None
+    m2 = re.search(r"/wp-content/themes/([^/]+)/", p)
+    theme = m2.group(1) if m2 else None
+    return plugin, theme
+
+
+def _extract_file_line(text: str) -> Tuple[Optional[str], Optional[int]]:
+    """
+    Common patterns:
+      in /path/file.php on line 123
+      in /path/file.php:123
+    """
+    m = re.search(r"\bin\s+([^\s]+\.php)\s+on\s+line\s+(\d+)", text)
+    if m:
+        return m.group(1), int(m.group(2))
+    m = re.search(r"\b([^\s]+\.php):(\d+)\b", text)
+    if m:
+        return m.group(1), int(m.group(2))
+    return None, None
+
+
+def _guess_level(line: str) -> str:
+    l = line.lower()
+    if "fatal error" in l or "uncaught" in l:
+        return "fatal"
+    if "parse error" in l:
+        return "fatal"
+    if "warning" in l:
+        return "warning"
+    if "notice" in l:
+        return "notice"
+    if "deprecated" in l:
+        return "deprecated"
+    if "error" in l:
+        return "error"
+    return "info"
+
+
+def _extract_timestamp(line: str) -> Optional[str]:
+    # Matches:
+    # [19-Dec-2025 09:12:33 UTC] ...
+    # 2025-12-19 09:12:33 ...
+    m = re.search(r"^\[([0-9]{1,2}-[A-Za-z]{3}-[0-9]{4}\s+[0-9:]{8}(?:\s+[A-Z]+)?)\]", line)
+    if m:
+        return m.group(1)
+    m2 = re.search(r"^([0-9]{4}-[0-9]{2}-[0-9]{2}\s+[0-9:]{8})", line)
+    if m2:
+        return m2.group(1)
+    return None
+
+
+def _normalize_log_lines(lines: List[str]) -> List[LogEntry]:
+    out: List[LogEntry] = []
+    for ln in lines:
+        lvl = _guess_level(ln)
+        ts = _extract_timestamp(ln)
+        file, line_no = _extract_file_line(ln)
+        plugin, theme = (None, None)
+        if file:
+            plugin, theme = _detect_plugin_theme_from_path(file)
+        out.append(
+            LogEntry(
+                ts=ts,
+                level=lvl,
+                message=ln.strip(),
+                file=file,
+                line=line_no,
+                plugin_slug=plugin,
+                theme_slug=theme,
+                raw=ln.strip(),
+            )
+        )
+    return out
+
+
+def _redact_secrets(text: str) -> str:
+    # Basic redactions: passwords in wp-config-like strings, tokens, long hex
+    t = text
+    t = re.sub(r"(DB_PASSWORD'\s*,\s*')[^']*(')", r"\1***\2", t)
+    t = re.sub(r"(?i)(password=)[^&\s]+", r"\1***", t)
+    t = re.sub(r"(?i)(passwd=)[^&\s]+", r"\1***", t)
+    t = re.sub(r"(?i)(token=)[^&\s]+", r"\1***", t)
+    t = re.sub(r"(?i)(apikey=)[^&\s]+", r"\1***", t)
+    t = re.sub(r"\b[a-f0-9]{32,64}\b", "***", t)  # hashes/tokens
+    return t
+
+
+def _default_log_candidates(root: Path) -> List[Path]:
+    """
+    Candidates are environment-specific. We support:
+    - WordPress debug log
+    - Common PHP error log locations under site root
+    - Optional explicit env vars
+    """
+    wp_debug = root / "wp-content" / "debug.log"
+
+    candidates: List[Path] = [wp_debug]
+
+    # Common per-site logs in hosting panels
+    for rel in [
+        "error_log",
+        "php_errorlog",
+        "php_error.log",
+        "logs/error.log",
+        "log/error.log",
+        "logs/php_error.log",
+        "log/php_error.log",
+    ]:
+        candidates.append(root / rel)
+
+    # Allow user/operator to configure additional absolute paths
+    env = os.getenv("REPAIR_LOG_PATHS", "").strip()
+    if env:
+        for p in env.split(","):
+            p = p.strip()
+            if not p:
+                continue
+            candidates.append(_safe_realpath(p))
+
+    # Deduplicate while keeping order
+    seen = set()
+    uniq: List[Path] = []
+    for c in candidates:
+        key = str(c)
+        if key in seen:
+            continue
+        seen.add(key)
+        uniq.append(c)
+    return uniq
+
+
+def read_logs(
+    root_path: str,
+    *,
+    tail_lines: int = _DEFAULT_TAIL_LINES,
+    redact: bool = True,
+    include_nonexistent: bool = False,
+) -> Dict[str, Any]:
+    """
+    Reads last N lines from known logs (best-effort).
+    Returns:
+      {
+        ok: bool,
+        root_path: str,
+        sources: [{path, exists, entries:[...]}],
+        summary: {...},
+        errors: [...]
+      }
+    """
+    root = _safe_realpath(root_path)
+    sources_out: List[Dict[str, Any]] = []
+    errors: List[str] = []
+
+    candidates = _default_log_candidates(root)
+
+    total_entries = 0
+    fatals = 0
+    plugin_hits: Dict[str, int] = {}
+    theme_hits: Dict[str, int] = {}
+
+    for path in candidates:
+        exists = path.exists() and path.is_file()
+        if not exists and not include_nonexistent:
+            continue
+
+        lines = _tail_lines(path, lines=tail_lines) if exists else []
+        if redact and lines:
+            lines = [_redact_secrets(x) for x in lines]
+
+        entries = _normalize_log_lines(lines)
+        total_entries += len(entries)
+
+        for e in entries:
+            if e.level == "fatal":
+                fatals += 1
+            if e.plugin_slug:
+                plugin_hits[e.plugin_slug] = plugin_hits.get(e.plugin_slug, 0) + 1
+            if e.theme_slug:
+                theme_hits[e.theme_slug] = theme_hits.get(e.theme_slug, 0) + 1
+
+        sources_out.append(
+            {
+                "path": str(path),
+                "exists": exists,
+                "entries": [asdict(e) for e in entries],
+            }
+        )
+
+    # Compact top offenders
+    top_plugins = sorted(plugin_hits.items(), key=lambda kv: kv[1], reverse=True)[:5]
+    top_themes = sorted(theme_hits.items(), key=lambda kv: kv[1], reverse=True)[:5]
+
+    return {
+        "ok": True,
+        "root_path": str(root),
+        "sources": sources_out,
+        "summary": {
+            "entries": total_entries,
+            "fatals": fatals,
+            "top_plugins": [{"slug": s, "count": c} for s, c in top_plugins],
+            "top_themes": [{"slug": s, "count": c} for s, c in top_themes],
+        },
+        "errors": errors,
+        "meta": {
+            "tail_lines": tail_lines,
+            "redact": redact,
+            "generated_at": int(time.time()),
+        },
+    }
+
+
+===== FILE: wp_repair/actions/htaccess.py =====
+
+# /var/www/sitefixer/backend/app/modules/wp-repair/actions/htaccess.py
+from __future__ import annotations
+
+import time
+from pathlib import Path
+from typing import Any, Dict, Optional
+
+from ..backup import backup_file
+from ..audit import audit_started, audit_success, audit_failed
+
+
+WP_HTACCESS_DEFAULT = """# BEGIN WordPress
+<IfModule mod_rewrite.c>
+RewriteEngine On
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+RewriteBase /
+RewriteRule ^index\\.php$ - [L]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule . /index.php [L]
+</IfModule>
+# END WordPress
+"""
+
+
+def _safe_realpath(p: str) -> Path:
+    return Path(p).expanduser().resolve(strict=False)
+
+
+def _write_text_atomic(path: Path, text: str) -> None:
+    tmp = path.with_name(path.name + f".tmp_{int(time.time())}")
+    tmp.write_text(text, encoding="utf-8")
+    tmp.replace(path)
+
+
+def reset_htaccess(
+    *,
+    actor: str,
+    root_path: str,
+    wp_rules: str = WP_HTACCESS_DEFAULT,
+    keep_custom_above: bool = False,
+) -> Dict[str, Any]:
+    """
+    Resets .htaccess to WP default rules.
+    - Backs up existing .htaccess (if exists)
+    - Writes new file atomically
+    - Audits everything
+
+    keep_custom_above:
+      If True and existing file exists, preserves lines ABOVE '# BEGIN WordPress'
+      (useful when hoster adds custom auth rules above WP block).
+    """
+    action_id = "fix.htaccess.reset"
+    params = {"keep_custom_above": keep_custom_above}
+
+    root = _safe_realpath(root_path)
+    ht = root / ".htaccess"
+
+    audit_started(actor=actor, root_path=str(root), action_id=action_id, params=params)
+
+    backup_meta = None
+    try:
+        if ht.exists() and ht.is_file():
+            backup_meta = backup_file(
+                root_path=str(root),
+                target_rel_or_abs=str(ht),
+                label="htaccess_reset",
+                compute_sha256=True,
+            )
+            if not backup_meta.get("ok"):
+                # If we can't backup, we DO NOT proceed.
+                audit_failed(
+                    actor=actor,
+                    root_path=str(root),
+                    action_id=action_id,
+                    params=params,
+                    error=f"Backup failed: {backup_meta.get('error')}",
+                    backup=backup_meta,
+                )
+                return {"ok": False, "error": "Backup failed", "backup": backup_meta}
+
+        # Preserve custom lines above WP block if requested
+        custom_prefix = ""
+        if keep_custom_above and ht.exists() and ht.is_file():
+            existing = ht.read_text(encoding="utf-8", errors="replace")
+            marker = "# BEGIN WordPress"
+            idx = existing.find(marker)
+            if idx > 0:
+                custom_prefix = existing[:idx].rstrip() + "\n\n"
+
+        new_content = (custom_prefix + wp_rules.strip() + "\n")
+        _write_text_atomic(ht, new_content)
+
+        res = {
+            "ok": True,
+            "path": str(ht),
+            "bytes_written": len(new_content.encode("utf-8")),
+            "kept_custom_prefix": bool(custom_prefix.strip()),
+        }
+
+        audit_success(
+            actor=actor,
+            root_path=str(root),
+            action_id=action_id,
+            params=params,
+            result=res,
+            backup=backup_meta,
+        )
+        return res
+
+    except Exception as e:
+        audit_failed(
+            actor=actor,
+            root_path=str(root),
+            action_id=action_id,
+            params=params,
+            error=f"{type(e).__name__}: {e}",
+            backup=backup_meta,
+        )
+        return {"ok": False, "error": f"{type(e).__name__}: {e}", "backup": backup_meta}
+
+
+===== FILE: wp_repair/actions/cache.py =====
+
+# /var/www/sitefixer/backend/app/modules/wp-repair/actions/cache.py
+from __future__ import annotations
+
+import os
+import shutil
+import time
+from pathlib import Path
+from typing import Any, Dict, List, Optional
+
+from ..audit import audit_started, audit_success, audit_failed
+from ..backup import backup_file
+
+
+def _safe_realpath(p: str) -> Path:
+    return Path(p).expanduser().resolve(strict=False)
+
+
+def _rename_with_suffix(p: Path, suffix: str) -> Optional[Path]:
+    if not p.exists():
+        return None
+    new = p.with_name(p.name + suffix)
+    # Ensure unique
+    if new.exists():
+        new = p.with_name(p.name + suffix + f"_{int(time.time())}")
+    p.rename(new)
+    return new
+
+
+def disable_dropins(
+    *,
+    actor: str,
+    root_path: str,
+    rename_suffix: str = ".disabled",
+    backup_before: bool = True,
+) -> Dict[str, Any]:
+    """
+    Disables common caching drop-ins safely by renaming:
+      - wp-content/object-cache.php
+      - wp-content/advanced-cache.php
+      - wp-content/db.php (rare, but can break sites)
+    Also detects maintenance file and cache directory but does not delete them.
+
+    Returns a list of affected files and their new names.
+    """
+    action_id = "fix.cache.disable_dropins"
+    params = {"rename_suffix": rename_suffix, "backup_before": backup_before}
+
+    root = _safe_realpath(root_path)
+    wp_content = root / "wp-content"
+
+    targets = [
+        wp_content / "object-cache.php",
+        wp_content / "advanced-cache.php",
+        wp_content / "db.php",
+    ]
+
+    audit_started(actor=actor, root_path=str(root), action_id=action_id, params=params)
+
+    backups: List[Dict[str, Any]] = []
+    changed: List[Dict[str, Any]] = []
+
+    try:
+        for t in targets:
+            if not t.exists() or not t.is_file():
+                continue
+
+            bmeta = None
+            if backup_before:
+                bmeta = backup_file(
+                    root_path=str(root),
+                    target_rel_or_abs=str(t),
+                    label="disable_dropins",
+                    compute_sha256=True,
+                )
+                backups.append(bmeta)
+                if not bmeta.get("ok"):
+                    audit_failed(
+                        actor=actor,
+                        root_path=str(root),
+                        action_id=action_id,
+                        params=params,
+                        error=f"Backup failed for {t}: {bmeta.get('error')}",
+                        backup={"backups": backups},
+                    )
+                    return {"ok": False, "error": "Backup failed", "backups": backups}
+
+            newp = _rename_with_suffix(t, rename_suffix)
+            changed.append({
+                "path": str(t),
+                "renamed_to": str(newp) if newp else None,
+                "backup": bmeta,
+            })
+
+        # Detect (do not delete) cache dirs / maintenance
+        cache_dir = wp_content / "cache"
+        w3tc_dir = wp_content / "w3tc-config"
+        litespeed_dir = wp_content / "litespeed"
+        maintenance = root / ".maintenance"
+
+        detections = {
+            "cache_dir": str(cache_dir) if cache_dir.exists() else None,
+            "w3tc_config": str(w3tc_dir) if w3tc_dir.exists() else None,
+            "litespeed": str(litespeed_dir) if litespeed_dir.exists() else None,
+            "maintenance": str(maintenance) if maintenance.exists() else None,
+        }
+
+        res = {
+            "ok": True,
+            "changed": changed,
+            "detections": detections,
+            "note": "Drop-ins were renamed (not deleted). Cache directories were only detected.",
+        }
+
+        audit_success(
+            actor=actor,
+            root_path=str(root),
+            action_id=action_id,
+            params=params,
+            result=res,
+            backup={"backups": backups},
+        )
+        return res
+
+    except Exception as e:
+        audit_failed(
+            actor=actor,
+            root_path=str(root),
+            action_id=action_id,
+            params=params,
+            error=f"{type(e).__name__}: {e}",
+            backup={"backups": backups},
+        )
+        return {"ok": False, "error": f"{type(e).__name__}: {e}", "backups": backups}
+
+
+def remove_maintenance_mode(
+    *,
+    actor: str,
+    root_path: str,
+    backup_before: bool = True,
+) -> Dict[str, Any]:
+    """
+    Removes .maintenance file (common after stuck updates).
+    """
+    action_id = "fix.maintenance.remove"
+    params = {"backup_before": backup_before}
+
+    root = _safe_realpath(root_path)
+    m = root / ".maintenance"
+
+    audit_started(actor=actor, root_path=str(root), action_id=action_id, params=params)
+
+    backup_meta = None
+    try:
+        if not m.exists():
+            res = {"ok": True, "removed": False, "path": str(m), "note": ".maintenance not present"}
+            audit_success(actor=actor, root_path=str(root), action_id=action_id, params=params, result=res)
+            return res
+
+        if backup_before and m.is_file():
+            backup_meta = backup_file(
+                root_path=str(root),
+                target_rel_or_abs=str(m),
+                label="maintenance_remove",
+                compute_sha256=True,
+            )
+            if not backup_meta.get("ok"):
+                audit_failed(
+                    actor=actor,
+                    root_path=str(root),
+                    action_id=action_id,
+                    params=params,
+                    error=f"Backup failed: {backup_meta.get('error')}",
+                    backup=backup_meta,
+                )
+                return {"ok": False, "error": "Backup failed", "backup": backup_meta}
+
+        m.unlink(missing_ok=True)
+        res = {"ok": True, "removed": True, "path": str(m), "backup": backup_meta}
+        audit_success(actor=actor, root_path=str(root), action_id=action_id, params=params, result=res, backup=backup_meta)
+        return res
+
+    except Exception as e:
+        audit_failed(
+            actor=actor,
+            root_path=str(root),
+            action_id=action_id,
+            params=params,
+            error=f"{type(e).__name__}: {e}",
+            backup=backup_meta,
+        )
+        return {"ok": False, "error": f"{type(e).__name__}: {e}", "backup": backup_meta}
+
+
+===== FILE: wp_repair/actions/permissions.py =====
+
+# /var/www/sitefixer/backend/app/modules/wp-repair/actions/permissions.py
+from __future__ import annotations
+
+import os
+import stat
+import time
+from dataclasses import dataclass, asdict
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+from ..audit import audit_started, audit_success, audit_failed
+from ..backup import backup_file
+
+
+DEFAULT_DIR_MODE = 0o755
+DEFAULT_FILE_MODE = 0o644
+WPCONFIG_MODE = 0o640
+
+# Hard limits to avoid runaway recursion on huge accounts
+MAX_ITEMS = int(os.getenv("WP_REPAIR_PERM_MAX_ITEMS", "120000"))
+MAX_DEPTH = int(os.getenv("WP_REPAIR_PERM_MAX_DEPTH", "25"))
+
+
+@dataclass
+class PermChange:
+    path: str
+    kind: str  # "file"|"dir"
+    before: Optional[str]
+    after: Optional[str]
+    changed: bool
+    error: Optional[str] = None
+
+
+def _safe_realpath(p: str) -> Path:
+    return Path(p).expanduser().resolve(strict=False)
+
+
+def _oct_mode(p: Path) -> Optional[str]:
+    try:
+        m = stat.S_IMODE(p.lstat().st_mode)
+        return oct(m)
+    except Exception:
+        return None
+
+
+def _should_skip(path: Path) -> bool:
+    # Skip symlinks (important security + avoids leaving root)
+    try:
+        if path.is_symlink():
+            return True
+    except Exception:
+        return True
+    return False
+
+
+def _iter_tree(root: Path) -> Tuple[List[Path], List[str]]:
+    """
+    Returns (paths, warnings)
+    BFS traversal with depth + count limits.
+    """
+    warnings: List[str] = []
+    out: List[Path] = []
+
+    q: List[Tuple[Path, int]] = [(root, 0)]
+    seen = 0
+
+    while q:
+        p, depth = q.pop(0)
+        if depth > MAX_DEPTH:
+            warnings.append(f"Max depth reached at {p}")
+            continue
+
+        if _should_skip(p):
+            continue
+
+        out.append(p)
+        seen += 1
+        if seen >= MAX_ITEMS:
+            warnings.append(f"Max item limit reached ({MAX_ITEMS}). Stopped early.")
+            break
+
+        try:
+            if p.is_dir():
+                for child in p.iterdir():
+                    q.append((child, depth + 1))
+        except Exception as e:
+            warnings.append(f"Cannot read dir {p}: {type(e).__name__}: {e}")
+
+    return out, warnings
+
+
+def normalize_permissions(
+    *,
+    actor: str,
+    root_path: str,
+    target_rel_or_abs: str = "",
+    dry_run: bool = False,
+    dir_mode: int = DEFAULT_DIR_MODE,
+    file_mode: int = DEFAULT_FILE_MODE,
+    wpconfig_mode: int = WPCONFIG_MODE,
+    backup_wpconfig: bool = True,
+) -> Dict[str, Any]:
+    """
+    Normalizes permissions under target (default: wp root).
+    - Directories -> 755
+    - Files -> 644
+    - wp-config.php -> 640
+
+    Safety:
+    - Skips symlinks
+    - Caps traversal depth/items
+    - Optionally dry-run
+    - Optionally backup wp-config.php before chmod (rarely needed but safe)
+    """
+    action_id = "fix.permissions.normalize"
+    params = {
+        "target": target_rel_or_abs or ".",
+        "dry_run": dry_run,
+        "dir_mode": oct(dir_mode),
+        "file_mode": oct(file_mode),
+        "wpconfig_mode": oct(wpconfig_mode),
+    }
+
+    root = _safe_realpath(root_path)
+    target = _safe_realpath(str(root / target_rel_or_abs)) if target_rel_or_abs and not os.path.isabs(target_rel_or_abs) else _safe_realpath(target_rel_or_abs or str(root))
+
+    audit_started(actor=actor, root_path=str(root), action_id=action_id, params=params)
+
+    wpconfig = root / "wp-config.php"
+    backup_meta = None
+    try:
+        if backup_wpconfig and wpconfig.exists() and wpconfig.is_file() and not dry_run:
+            backup_meta = backup_file(
+                root_path=str(root),
+                target_rel_or_abs=str(wpconfig),
+                label="permissions_wpconfig_backup",
+                compute_sha256=True,
+            )
+            if not backup_meta.get("ok"):
+                audit_failed(
+                    actor=actor,
+                    root_path=str(root),
+                    action_id=action_id,
+                    params=params,
+                    error=f"Backup wp-config.php failed: {backup_meta.get('error')}",
+                    backup=backup_meta,
+                )
+                return {"ok": False, "error": "Backup wp-config.php failed", "backup": backup_meta}
+
+        paths, warnings = _iter_tree(target)
+
+        changes: List[PermChange] = []
+        changed_count = 0
+        error_count = 0
+
+        for p in paths:
+            if _should_skip(p):
+                continue
+
+            before = _oct_mode(p)
+            kind = "dir" if p.is_dir() else "file" if p.is_file() else "other"
+
+            # Decide desired mode
+            desired = None
+            if kind == "dir":
+                desired = dir_mode
+            elif kind == "file":
+                # wp-config special case
+                if p.resolve(strict=False) == wpconfig.resolve(strict=False):
+                    desired = wpconfig_mode
+                else:
+                    desired = file_mode
+
+            if desired is None:
+                continue
+
+            after = oct(desired)
+            changed = (before != after)
+
+            if changed and not dry_run:
+                try:
+                    os.chmod(p, desired)
+                except Exception as e:
+                    error_count += 1
+                    changes.append(PermChange(
+                        path=str(p),
+                        kind=kind,
+                        before=before,
+                        after=after,
+                        changed=False,
+                        error=f"{type(e).__name__}: {e}",
+                    ))
+                    continue
+
+            if changed:
+                changed_count += 1
+
+            # Only record changed items to keep payload small
+            if changed or kind == "other":
+                changes.append(PermChange(
+                    path=str(p),
+                    kind=kind,
+                    before=before,
+                    after=after,
+                    changed=changed,
+                ))
+
+        # Limit returned changes list (UI-friendly)
+        MAX_RETURN = 500
+        changes_out = [asdict(c) for c in changes[:MAX_RETURN]]
+
+        res = {
+            "ok": True,
+            "target": str(target),
+            "dry_run": dry_run,
+            "changed": changed_count,
+            "errors": error_count,
+            "warnings": warnings,
+            "changes_sample": changes_out,
+            "truncated": len(changes) > MAX_RETURN,
+        }
+
+        audit_success(
+            actor=actor,
+            root_path=str(root),
+            action_id=action_id,
+            params=params,
+            result=res,
+            backup=backup_meta,
+        )
+        return res
+
+    except Exception as e:
+        audit_failed(
+            actor=actor,
+            root_path=str(root),
+            action_id=action_id,
+            params=params,
+            error=f"{type(e).__name__}: {e}",
+            backup=backup_meta,
+        )
+        return {"ok": False, "error": f"{type(e).__name__}: {e}", "backup": backup_meta}
+
+
+===== FILE: wp_repair/sftp_sessions.py =====
+
+from __future__ import annotations
+
+from typing import Tuple
+import paramiko
+
+from .session_store import store
+from .sftp import SftpCreds, connect_sftp
+
+
+def get_sftp_client(session_id: str) -> Tuple[paramiko.SSHClient, paramiko.SFTPClient]:
+    s = store.get(session_id)
+    if not s:
+        raise ValueError("SFTP Session ungültig oder abgelaufen.")
+
+    creds = SftpCreds(
+        host=s.data["host"],
+        username=s.data["user"],
+        password=s.data["pass"],
+        port=int(s.data.get("port", 22)),
+    )
+    return connect_sftp(creds)
+
+
+===== FILE: wp_repair/models.py =====
+
+from app.extensions import db
+
+class RepairRun(db.Model):
+    __tablename__ = "repair_run"
+    id = db.Column(db.BigInteger, primary_key=True)
+    ticket_id = db.Column(db.Integer, nullable=False, index=True)
+    actor_user_id = db.Column(db.Integer, nullable=True)
+    status = db.Column(db.String(32), nullable=False, default="running")
+    kind = db.Column(db.String(32), nullable=False, default="repair")
+    root_path = db.Column(db.Text, nullable=True)
+    started_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+    finished_at = db.Column(db.DateTime, nullable=True)
+    summary_json = db.Column(db.JSON, nullable=True)
+
+class RepairActionLog(db.Model):
+    __tablename__ = "repair_action_log"
+    id = db.Column(db.BigInteger, primary_key=True)
+    run_id = db.Column(db.BigInteger, db.ForeignKey("repair_run.id", ondelete="CASCADE"), nullable=False, index=True)
+    ticket_id = db.Column(db.Integer, nullable=False, index=True)
+    action_key = db.Column(db.String(64), nullable=False)
+    status = db.Column(db.String(16), nullable=False)
+    message = db.Column(db.Text, nullable=True)
+    details_json = db.Column(db.JSON, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+
+class RepairArtifact(db.Model):
+    __tablename__ = "repair_artifact"
+    id = db.Column(db.BigInteger, primary_key=True)
+    run_id = db.Column(db.BigInteger, db.ForeignKey("repair_run.id", ondelete="CASCADE"), nullable=False, index=True)
+    ticket_id = db.Column(db.Integer, nullable=False, index=True)
+    type = db.Column(db.String(32), nullable=False)   # backup, diff, report, log, quarantine
+    path = db.Column(db.Text, nullable=False)
+    sha256 = db.Column(db.String(64), nullable=True)
+    size = db.Column(db.BigInteger, nullable=True)
+    meta_json = db.Column(db.JSON, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.now())
+
+
+===== FILE: wp_repair/backup.py =====
+
+# /var/www/sitefixer/backend/app/modules/wp-repair/backup.py
+from __future__ import annotations
+
+import hashlib
+import os
+import shutil
+import time
+from dataclasses import dataclass, asdict
+from pathlib import Path
+from typing import Any, Dict, Optional, Tuple
+
+
+# Where backups live (default inside backend). Override via env if you want.
+DEFAULT_BACKUP_BASE = os.getenv("WP_REPAIR_BACKUP_DIR", "/var/www/sitefixer/core-cache/repair-backups")
+MAX_FILE_BYTES = int(os.getenv("WP_REPAIR_MAX_BACKUP_FILE_BYTES", "200000000"))  # 200MB safety
+MAX_DIR_BYTES = int(os.getenv("WP_REPAIR_MAX_BACKUP_DIR_BYTES", "1500000000"))  # 1.5GB safety
+
+
+def _safe_realpath(p: str) -> Path:
+    return Path(p).expanduser().resolve(strict=False)
+
+
+def _ensure_dir(p: Path) -> None:
+    p.mkdir(parents=True, exist_ok=True)
+
+
+def _sha256_file(path: Path, limit_bytes: Optional[int] = None) -> str:
+    h = hashlib.sha256()
+    with path.open("rb") as f:
+        if limit_bytes is None:
+            for chunk in iter(lambda: f.read(1024 * 1024), b""):
+                h.update(chunk)
+        else:
+            remaining = limit_bytes
+            while remaining > 0:
+                chunk = f.read(min(1024 * 1024, remaining))
+                if not chunk:
+                    break
+                h.update(chunk)
+                remaining -= len(chunk)
+    return h.hexdigest()
+
+
+def _dir_size_bytes(path: Path, max_files: int = 200000) -> int:
+    """
+    Compute directory size with hard caps to avoid runaway scans.
+    """
+    total = 0
+    count = 0
+    for p in path.rglob("*"):
+        count += 1
+        if count > max_files:
+            break
+        try:
+            if p.is_file():
+                total += p.stat().st_size
+        except Exception:
+            continue
+    return total
+
+
+def _clamp_target(root_path: str, target_path: str) -> Tuple[bool, str, Path, Path]:
+    """
+    Ensure target_path is within root_path.
+    """
+    root = _safe_realpath(root_path)
+    target = _safe_realpath(target_path)
+
+    try:
+        target.relative_to(root)
+    except Exception:
+        return False, "target_path is outside root_path (path clamp)", root, target
+
+    return True, "", root, target
+
+
+def _job_id(prefix: str = "bk") -> str:
+    return f"{prefix}-{int(time.time())}"
+
+
+@dataclass
+class BackupMeta:
+    ok: bool
+    kind: str  # "file" | "dir"
+    root_path: str
+    target_path: str
+    backup_base: str
+    backup_path: str
+    created_at: int
+    sha256_before: Optional[str] = None
+    bytes: Optional[int] = None
+    error: Optional[str] = None
+
+
+def backup_file(
+    *,
+    root_path: str,
+    target_rel_or_abs: str,
+    label: str,
+    backup_base: str = DEFAULT_BACKUP_BASE,
+    compute_sha256: bool = True,
+) -> Dict[str, Any]:
+    """
+    Backup a single file (copy2).
+    - root_path: WordPress root (clamp boundary)
+    - target_rel_or_abs: file path (relative to root or absolute)
+    - label: e.g. "htaccess_reset"
+    """
+    # Resolve paths
+    root = _safe_realpath(root_path)
+    target = _safe_realpath(target_rel_or_abs) if os.path.isabs(target_rel_or_abs) else _safe_realpath(str(root / target_rel_or_abs))
+
+    ok, err, root2, target2 = _clamp_target(str(root), str(target))
+    if not ok:
+        return asdict(BackupMeta(
+            ok=False, kind="file", root_path=str(root2), target_path=str(target2),
+            backup_base=backup_base, backup_path="", created_at=int(time.time()),
+            error=err
+        ))
+
+    if not target2.exists() or not target2.is_file():
+        return asdict(BackupMeta(
+            ok=False, kind="file", root_path=str(root2), target_path=str(target2),
+            backup_base=backup_base, backup_path="", created_at=int(time.time()),
+            error="target file not found"
+        ))
+
+    size = target2.stat().st_size
+    if size > MAX_FILE_BYTES:
+        return asdict(BackupMeta(
+            ok=False, kind="file", root_path=str(root2), target_path=str(target2),
+            backup_base=backup_base, backup_path="", created_at=int(time.time()),
+            bytes=size,
+            error=f"file too large for backup (>{MAX_FILE_BYTES} bytes)"
+        ))
+
+    sha = _sha256_file(target2) if compute_sha256 else None
+
+    job = _job_id("file")
+    rel = str(target2.relative_to(root2)).replace("/", "__")
+    backup_dir = _safe_realpath(backup_base) / "wp-repair" / job / label
+    _ensure_dir(backup_dir)
+    dest = backup_dir / rel
+
+    try:
+        shutil.copy2(str(target2), str(dest))
+        return asdict(BackupMeta(
+            ok=True, kind="file",
+            root_path=str(root2), target_path=str(target2),
+            backup_base=str(_safe_realpath(backup_base)),
+            backup_path=str(dest),
+            created_at=int(time.time()),
+            sha256_before=sha,
+            bytes=size
+        ))
+    except Exception as e:
+        return asdict(BackupMeta(
+            ok=False, kind="file",
+            root_path=str(root2), target_path=str(target2),
+            backup_base=str(_safe_realpath(backup_base)),
+            backup_path=str(dest),
+            created_at=int(time.time()),
+            sha256_before=sha,
+            bytes=size,
+            error=f"{type(e).__name__}: {e}"
+        ))
+
+
+def backup_dir(
+    *,
+    root_path: str,
+    target_rel_or_abs: str,
+    label: str,
+    backup_base: str = DEFAULT_BACKUP_BASE,
+    max_bytes: int = MAX_DIR_BYTES,
+) -> Dict[str, Any]:
+    """
+    Backup a directory (copytree) under a job folder.
+    Used for: plugin/theme folder backups before replace.
+    """
+    root = _safe_realpath(root_path)
+    target = _safe_realpath(target_rel_or_abs) if os.path.isabs(target_rel_or_abs) else _safe_realpath(str(root / target_rel_or_abs))
+
+    ok, err, root2, target2 = _clamp_target(str(root), str(target))
+    if not ok:
+        return asdict(BackupMeta(
+            ok=False, kind="dir", root_path=str(root2), target_path=str(target2),
+            backup_base=backup_base, backup_path="", created_at=int(time.time()),
+            error=err
+        ))
+
+    if not target2.exists() or not target2.is_dir():
+        return asdict(BackupMeta(
+            ok=False, kind="dir", root_path=str(root2), target_path=str(target2),
+            backup_base=backup_base, backup_path="", created_at=int(time.time()),
+            error="target directory not found"
+        ))
+
+    size = _dir_size_bytes(target2)
+    if size > max_bytes:
+        return asdict(BackupMeta(
+            ok=False, kind="dir", root_path=str(root2), target_path=str(target2),
+            backup_base=backup_base, backup_path="", created_at=int(time.time()),
+            bytes=size,
+            error=f"directory too large for backup (>{max_bytes} bytes)"
+        ))
+
+    job = _job_id("dir")
+    rel = str(target2.relative_to(root2)).replace("/", "__")
+    backup_dir_path = _safe_realpath(backup_base) / "wp-repair" / job / label / rel
+    _ensure_dir(backup_dir_path.parent)
+
+    try:
+        # copytree requires dest not exist
+        shutil.copytree(str(target2), str(backup_dir_path))
+        return asdict(BackupMeta(
+            ok=True, kind="dir",
+            root_path=str(root2), target_path=str(target2),
+            backup_base=str(_safe_realpath(backup_base)),
+            backup_path=str(backup_dir_path),
+            created_at=int(time.time()),
+            bytes=size
+        ))
+    except Exception as e:
+        return asdict(BackupMeta(
+            ok=False, kind="dir",
+            root_path=str(root2), target_path=str(target2),
+            backup_base=str(_safe_realpath(backup_base)),
+            backup_path=str(backup_dir_path),
+            created_at=int(time.time()),
+            bytes=size,
+            error=f"{type(e).__name__}: {e}"
+        ))
+
+
+def rollback_backup(*, backup_path: str, restore_to: str) -> Dict[str, Any]:
+    """
+    Restores a backup file/dir back to restore_to.
+    - backup_path: path returned from backup_* meta
+    - restore_to: absolute path to restore destination
+    """
+    b = _safe_realpath(backup_path)
+    dest = _safe_realpath(restore_to)
+
+    if not b.exists():
+        return {"ok": False, "error": "backup_path not found", "backup_path": str(b), "restore_to": str(dest)}
+
+    try:
+        if b.is_file():
+            _ensure_dir(dest.parent)
+            shutil.copy2(str(b), str(dest))
+        elif b.is_dir():
+            # restore by replacing dest (move away existing)
+            if dest.exists():
+                tmp_old = dest.with_name(dest.name + f".rollback_old_{int(time.time())}")
+                shutil.move(str(dest), str(tmp_old))
+            shutil.copytree(str(b), str(dest))
+        else:
+            return {"ok": False, "error": "backup_path is neither file nor dir", "backup_path": str(b), "restore_to": str(dest)}
+
+        return {"ok": True, "backup_path": str(b), "restore_to": str(dest)}
+    except Exception as e:
+        return {"ok": False, "error": f"{type(e).__name__}: {e}", "backup_path": str(b), "restore_to": str(dest)}
+
+
+===== FILE: wp_repair/routes.py =====
+
+from __future__ import annotations
+
+from flask import Blueprint, jsonify, request
+from flask_jwt_extended import get_jwt_identity
+
+from app.wp_bridge import get_kundendetails  # ✅ dein Pfad
+from .inventory import SftpFS
+from .diagnose import run_diagnose
+
+from .actions.htaccess import reset_htaccess
+from .actions.permissions import normalize_permissions
+from .actions.cache import disable_dropins, remove_maintenance_mode
+
+from .session_store import store
+from .sftp import SftpCreds, connect_sftp, sftp_ls, find_wp_roots
+
+bp = Blueprint("wp_repair", __name__, url_prefix="/api/wp-repair")
+
+
+def _actor() -> str:
+    """
+    Returns current actor identifier for audit.
+    Falls back to 'system' if JWT not present.
+    """
+    try:
+        ident = get_jwt_identity()
+        return str(ident) if ident is not None else "system"
+    except Exception:
+        return "system"
+
+
+@bp.post("/diagnose")
+def diagnose_route():
+    data = request.get_json(silent=True) or {}
+    print("DIAGNOSE PAYLOAD:", data)
+
+    root_path = (data.get("root_path") or "").strip()
+    base_url  = (data.get("base_url") or "").strip()
+    session_id = (data.get("session_id") or "").strip()
+
+    if not root_path or not base_url or not session_id:
+        return jsonify({"ok": False, "error": "root_path, base_url, session_id are required"}), 400
+
+    res = run_diagnose(
+        root_path=root_path,
+        base_url=base_url,
+        session_id=session_id,
+        verify_ssl=bool(data.get("verify_ssl", True)),
+        capture_snippet=bool(data.get("capture_snippet", True)),
+        tail_lines=int(data.get("tail_lines", 300)),
+        redact_logs=bool(data.get("redact_logs", True)),
+    )
+    return jsonify(res)
+
+
+
+
+@bp.post("/fix/htaccess/reset")
+def htaccess_reset_route():
+    data = request.get_json(silent=True) or {}
+
+    root_path = (data.get("root_path") or "").strip()
+    keep_custom_above = bool(data.get("keep_custom_above", False))
+
+    if not root_path:
+        return jsonify({"ok": False, "error": "root_path is required"}), 400
+
+    res = reset_htaccess(
+        actor=_actor(),
+        root_path=root_path,
+        keep_custom_above=keep_custom_above,
+    )
+    return jsonify(res), (200 if res.get("ok") else 500)
+
+
+@bp.post("/fix/permissions/normalize")
+def permissions_normalize_route():
+    data = request.get_json(silent=True) or {}
+
+    root_path = (data.get("root_path") or "").strip()
+    target = (data.get("target") or "").strip()
+    dry_run = bool(data.get("dry_run", False))
+
+    if not root_path:
+        return jsonify({"ok": False, "error": "root_path is required"}), 400
+
+    res = normalize_permissions(
+        actor=_actor(),
+        root_path=root_path,
+        target_rel_or_abs=target,
+        dry_run=dry_run,
+    )
+    return jsonify(res), (200 if res.get("ok") else 500)
+
+
+@bp.post("/fix/cache/disable-dropins")
+def cache_disable_dropins_route():
+    data = request.get_json(silent=True) or {}
+
+    root_path = (data.get("root_path") or "").strip()
+    rename_suffix = (data.get("rename_suffix") or ".disabled").strip()
+    backup_before = bool(data.get("backup_before", True))
+
+    if not root_path:
+        return jsonify({"ok": False, "error": "root_path is required"}), 400
+
+    res = disable_dropins(
+        actor=_actor(),
+        root_path=root_path,
+        rename_suffix=rename_suffix,
+        backup_before=backup_before,
+    )
+    return jsonify(res), (200 if res.get("ok") else 500)
+
+
+@bp.post("/fix/maintenance/remove")
+def maintenance_remove_route():
+    data = request.get_json(silent=True) or {}
+
+    root_path = (data.get("root_path") or "").strip()
+    backup_before = bool(data.get("backup_before", True))
+
+    if not root_path:
+        return jsonify({"ok": False, "error": "root_path is required"}), 400
+
+    res = remove_maintenance_mode(
+        actor=_actor(),
+        root_path=root_path,
+        backup_before=backup_before,
+    )
+    return jsonify(res), (200 if res.get("ok") else 500)
+
+
+# ---------------------------------------------------------------------------
+# SFTP Wizard (RepairBeta.vue)
+# ---------------------------------------------------------------------------
+
+def _ticket_sftp_access(ticket: dict) -> tuple[str, str, str, int]:
+    host = ticket.get("ftp_host") or ticket.get("ftp_server") or ""
+    user = ticket.get("ftp_user") or ""
+    pw = ticket.get("ftp_pass") or ""
+    port = int(ticket.get("ftp_port") or ticket.get("sftp_port") or 22)
+
+    if not host or not user or not pw:
+        raise ValueError("Ticket hat keine vollständigen SFTP Zugangsdaten (host/user/pass).")
+
+    return host, user, pw, port
+
+
+@bp.post("/tickets/<int:ticket_id>/sftp/connect")
+def sftp_connect_route(ticket_id: int):
+    ticket = get_kundendetails(ticket_id)
+    if not ticket:
+        return jsonify({"error": "Ticket nicht gefunden"}), 404
+
+    try:
+        host, user, pw, port = _ticket_sftp_access(ticket)
+
+        # echter Verbindungs-Test
+        client, sftp = connect_sftp(SftpCreds(host=host, username=user, password=pw, port=port))
+        sftp.close()
+        client.close()
+
+        sid = store.create({"host": host, "user": user, "pass": pw, "port": port}, ttl_seconds=1800)
+        return jsonify({"sftp_session_id": sid, "expires_in": 1800})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@bp.get("/sftp/<session_id>/projects")
+def sftp_projects_route(session_id: str):
+    s = store.get(session_id)
+    if not s:
+        return jsonify({"error": "Session ungültig oder abgelaufen."}), 400
+
+    creds = SftpCreds(
+        host=s.data["host"],
+        username=s.data["user"],
+        password=s.data["pass"],
+        port=int(s.data.get("port", 22)),
+    )
+
+    try:
+        client, sftp = connect_sftp(creds)
+        items = find_wp_roots(sftp, start="/", max_depth=7)
+        sftp.close()
+        client.close()
+        return jsonify({"items": items})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+@bp.get("/sftp/<session_id>/ls")
+def sftp_ls_route(session_id: str):
+    s = store.get(session_id)
+    if not s:
+        return jsonify({"error": "Session ungültig oder abgelaufen."}), 400
+
+    path = (request.args.get("path") or "/").strip() or "/"
+    creds = SftpCreds(
+        host=s.data["host"],
+        username=s.data["user"],
+        password=s.data["pass"],
+        port=int(s.data.get("port", 22)),
+    )
+
+    try:
+        client, sftp = connect_sftp(creds)
+        items = sftp_ls(sftp, path)
+        sftp.close()
+        client.close()
+        return jsonify({"items": items})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+
+# Optional: Root speichern (erstmal in-memory)
+@bp.post("/tickets/<int:ticket_id>/root")
+def set_root_route(ticket_id: int):
+    data = request.get_json(silent=True) or {}
+    root_path = (data.get("root_path") or "").strip()
+    if not root_path:
+        return jsonify({"error": "root_path is required"}), 400
+
+    # In-memory "ticket state" (später: in DB / TicketMeta)
+    key = f"root:{ticket_id}"
+    store.create({"key": key, "root_path": root_path}, ttl_seconds=7 * 24 * 3600)
+    return jsonify({"ok": True, "root_path": root_path})
+

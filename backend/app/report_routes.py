@@ -172,3 +172,19 @@ def get_pdf(rid):
     p = _pdf_path(rid)
     if not os.path.exists(p): return jsonify({"error":"pdf not available"}), 404
     return send_from_directory(_base_dir(), f"{rid}.pdf", as_attachment=True, download_name=f"{rid}.pdf")
+
+# Einzelnen Report löschen
+@bp_report.route("/<int:report_id>", methods=["DELETE"])
+def delete_report(report_id):
+    r = Report.query.get_or_404(report_id)
+    db.session.delete(r)
+    db.session.commit()
+    return jsonify({"ok": True})
+
+# Alle Reports zu einem Ticket löschen
+@bp_report.route("/ticket/<int:ticket_id>", methods=["DELETE"])
+def delete_reports_for_ticket(ticket_id):
+    deleted = Report.query.filter_by(ticket_id=ticket_id).delete()
+    db.session.commit()
+    return jsonify({"ok": True, "deleted": deleted})
+
